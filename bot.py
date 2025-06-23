@@ -124,9 +124,7 @@ async def auth(ctx, key):
 @bot.command()
 async def logs(ctx):
     log_raw = requests.get("https://midnightponywka.com/data/system.log").text.splitlines()
-    embed = embed_msg("📝 Son 10 Log", "```
-" + "\n".join(log_raw[-10:]) + "
-```")
+    embed = embed_msg("📝 Son 10 Log", "```\n" + "\n".join(log_raw[-10:]) + "\n```")
     msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
