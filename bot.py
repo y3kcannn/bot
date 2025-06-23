@@ -9,7 +9,7 @@ DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 API_TOKEN = "ADMIN_API_SECRET_TOKEN_2024"
 BASE_URL = "https://midnightponywka.com/index.php?api=1&token=" + API_TOKEN
 
-ALLOWED_CHANNEL_ID = 1244284695103637654  # Sadece bu kanalda çalışacak
+ALLOWED_CHANNEL_ID = 1385706278357303356  # Sadece bu kanalda çalışacak
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -35,7 +35,7 @@ async def on_ready():
 @bot.command()
 async def ping(ctx):
     if not is_authorized(ctx): return
-    embed = embed_msg("🏓 Pong!", "Bot çalışıyor.")
+    embed = embed_msg("\U0001F3D3 Pong!", "Bot çalışıyor.")
     msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
