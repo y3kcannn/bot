@@ -9,14 +9,14 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Ortam değişkeninden token çekme yerine doğrudan token koyabilirsin
-TOKEN = "MTM4NjU3MDQ3MDk1NDEwNzAxMQ.GBP1GE.4TZ0XOLwBm-uKvjT4bW7L0kqJHNRGCJwg1zhbI"
+# Token'ı Railway'deki DISCORD_TOKEN environment variable'ından al
+TOKEN = os.environ.get("DISCORD_TOKEN")
 
 @bot.event
 async def on_ready():
     print(f"[+] Bot giriş yaptı: {bot.user}")
 
-# Helper: 5 saniye sonra mesaj sil
+# Mesajları 5 saniye sonra silen yardımcı fonksiyon
 async def delete_after(ctx, response):
     await asyncio.sleep(5)
     await response.delete()
