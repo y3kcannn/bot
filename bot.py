@@ -63,4 +63,31 @@ async def key(ctx):
         msg = await ctx.send(f"⚠️ Hata oluştu: {str(e)}")
     await delete_after(ctx, msg)
 
+@bot.command()
+async def keylist(ctx):
+    file_path = __DIR__ + '/../data/keys.txt'
+    try:
+        with open(file_path, 'r') as file:
+            keys = file.readlines()
+        if keys:
+            keys_list = ''.join([key.strip() + "\n" for key in keys])
+            msg = await ctx.send(f"**Key Listesi:**\n{keys_list}")
+        else:
+            msg = await ctx.send("❌ Key dosyasında anahtar bulunamadı.")
+    except Exception as e:
+        msg = await ctx.send(f"⚠️ Hata oluştu: {str(e)}")
+    await delete_after(ctx, msg)
+
+@bot.command()
+async def komut(ctx):
+    commands_list = """
+    **Bot Komutları:**
+    `!ban <kullanıcı_adı>` - Kullanıcıyı banlar
+    `!unban <kullanıcı_adı>` - Kullanıcının yasağını kaldırır
+    `!key` - Yeni bir key oluşturur
+    `!keylist` - Anahtarları listeler
+    `!komut` - Botun komutlarını gösterir
+    """
+    await ctx.send(commands_list)
+
 bot.run(TOKEN)
