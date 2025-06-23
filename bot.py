@@ -65,15 +65,18 @@ async def key(ctx):
 
 @bot.command()
 async def keylist(ctx):
-    file_path = __DIR__ + '/../data/keys.txt'
+    url = "https://midnightponywka.com/data/keys.txt"
     try:
-        with open(file_path, 'r') as file:
-            keys = file.readlines()
-        if keys:
-            keys_list = ''.join([key.strip() + "\n" for key in keys])
-            msg = await ctx.send(f"**Key Listesi:**\n{keys_list}")
+        response = requests.get(url)
+        if response.status_code == 200:
+            keys = response.text.strip().split("\n")  # Satırlara ayırıyoruz
+            if keys:
+                keys_list = ''.join([key.strip() + "\n" for key in keys])
+                msg = await ctx.send(f"**Key Listesi:**\n{keys_list}")
+            else:
+                msg = await ctx.send("❌ Key dosyasının içeriği boş.")
         else:
-            msg = await ctx.send("❌ Key dosyasında anahtar bulunamadı.")
+            msg = await ctx.send(f"❌ Dosya alınamadı: {response.status_code}")
     except Exception as e:
         msg = await ctx.send(f"⚠️ Hata oluştu: {str(e)}")
     await delete_after(ctx, msg)
