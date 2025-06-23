@@ -9,8 +9,11 @@ DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 API_TOKEN = "ADMIN_API_SECRET_TOKEN_2024"
 BASE_URL = "https://midnightponywka.com/index.php?api=1&token=" + API_TOKEN
 
-ALLOWED_USERS = ["schwarz_44", "midnightponywka"]
-ALLOWED_CHANNEL_ID = 1244284695103637654  # Sadece bu kanalda çalışacak (örnek)
+ALLOWED_USER_IDS = [
+    389844191263457291,  # schwarz_44
+    1065720631401926768  # midnightponywka
+]
+ALLOWED_CHANNEL_ID = 1244284695103637654  # Sadece bu kanalda çalışacak
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -19,7 +22,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 start_time = time.time()
 
 def is_authorized(ctx):
-    return ctx.channel.id == ALLOWED_CHANNEL_ID and str(ctx.author) in ALLOWED_USERS
+    return ctx.channel.id == ALLOWED_CHANNEL_ID and ctx.author.id in ALLOWED_USER_IDS
 
 async def delete_after(ctx, msg, delay=30):
     await asyncio.sleep(delay)
@@ -60,7 +63,7 @@ async def key(ctx):
     r = requests.post(BASE_URL + "&action=generate-key")
     data = r.json()
     if data["status"] == "success":
-        embed = embed_msg("✅ Yeni Key", f"`🔒 Gizli:` ||`{data['data']['key']}`||")
+        embed = embed_msg("✅ Yeni Key", f"🔒 Gizli: ||`{data['data']['key']}`||")
     else:
         embed = embed_msg("❌ Hata", data['message'], color=0xFF0000)
     msg = await ctx.send(embed=embed)
