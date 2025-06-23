@@ -67,18 +67,24 @@ async def key(ctx):
 async def keylist(ctx):
     url = "https://midnightponywka.com/data/keys.txt"
     try:
+        # URL'den dosya verisini alalım
         response = requests.get(url)
+        
         if response.status_code == 200:
-            keys = response.text.strip().split("\n")  # Satırlara ayırıyoruz
+            # Dosyayı başarılı bir şekilde çektik
+            keys = response.text.strip().split("\n")  # Satırlara ayıralım
             if keys:
                 keys_list = ''.join([key.strip() + "\n" for key in keys])
                 msg = await ctx.send(f"**Key Listesi:**\n{keys_list}")
             else:
                 msg = await ctx.send("❌ Key dosyasının içeriği boş.")
         else:
-            msg = await ctx.send(f"❌ Dosya alınamadı: {response.status_code}")
+            msg = await ctx.send(f"❌ Dosya alınamadı. Sunucudan gelen yanıt: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        msg = await ctx.send(f"⚠️ Web isteği hatası: {str(e)}")
     except Exception as e:
         msg = await ctx.send(f"⚠️ Hata oluştu: {str(e)}")
+    
     await delete_after(ctx, msg)
 
 @bot.command()
