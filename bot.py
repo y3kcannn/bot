@@ -88,6 +88,7 @@ async def komut(ctx):
     `!keylist` - Anahtarları listeler
     `!komut` - Botun komutlarını gösterir
     """
-    await ctx.send(commands_list)
+    msg = await ctx.send(commands_list)
+    await delete_after(ctx, msg)  # Mesajı 5 saniye sonra sil
 
 bot.run(TOKEN)
