@@ -46,7 +46,7 @@ async def key(ctx):
     r = requests.post(BASE_URL + "&action=generate-key")
     data = r.json()
     if data["status"] == "success":
-        await ctx.send(f"✅ Yeni Key: 🔐 Gizli: ||`{data['data']['key']}`||")
+        await ctx.send(f"✅ Yeni Key: 🔐 /spoiler `{data['data']['key']}`")
     else:
         await ctx.send(f"❌ Hata: {data['message']}")
 
@@ -61,7 +61,7 @@ async def deletekey(ctx, key):
 async def keylist(ctx):
     if not is_authorized(ctx): return
     keys = requests.get("https://midnightponywka.com/data/keys.txt").text.splitlines()[:20]
-    await ctx.send("🔑 İlk 20 Key:\n" + "\n".join(f"🔑 ||`{k}`||" for k in keys))
+    await ctx.send("🔑 İlk 20 Key:\n" + "\n".join(f"🔑 /spoiler `{k}`" for k in keys))
 
 @bot.command()
 async def ban(ctx, username):
