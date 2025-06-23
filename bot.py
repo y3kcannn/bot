@@ -1,69 +1,43 @@
 import discord
 from discord.ext import commands
 import requests
-import os
 import asyncio
-
-TOKEN = "MTM4NjU3MDQ3MDk1NDEwNzAxMQ.GBP1GE.4TZ0XOLwBm-uKvjT4bW7L0kqJHNRGCJwg1zhbI"  # <-- buraya gerçek Discord bot token'ını koy
-API_TOKEN = "BEDIRHAN_SECRET"     # <-- PHP tarafındaki $secret_token ile birebir olmalı
-API_URL = "https://midnightponywka.com/loader/discord/api.php"
+import os
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
-
-# Ortak mesaj temizleyici
-async def delete_after(ctx, msg):
-    await asyncio.sleep(5)
-    await msg.delete()
-    await ctx.message.delete()
-
-# API'ye istek at
-def api_post(data):
-    try:
-        response = requests.post(API_URL, data=data, timeout=5)
-        return response.text.strip()
-    except Exception as e:
-        return f"⚠️ API hatası: {str(e)}"
 
 @bot.event
 async def on_ready():
     print(f"[+] Bot giriş yaptı: {bot.user}")
 
 @bot.command()
-async def ban(ctx, username: str):
-    result = api_post({'token': API_TOKEN, 'action': 'ban', 'username': username})
-    msg = await ctx.send(result)
-    await delete_after(ctx, msg)
+async def create(ctx, arg1: str, member: discord.Member = None):
+    if arg1.lower() != "key" or member is None:
+        await ctx.send("❗ Kullanım: `!create key @kullanıcı`")
+        return
 
-@bot.command()
-async def unban(ctx, username: str):
-    result = api_post({'token': API_TOKEN, 'action': 'unban', 'username': username})
-    msg = await ctx.send(result)
-    await delete_after(ctx, msg)
+    url = "https://midnightponywka.com/loader/create_key.php"
+    data = {
+        "secret": "123456",  # PHP tarafındaki sabit gizli anahtar
+        "username": member.name
+    }
 
-@bot.command()
-async def reset(ctx, username: str):
-    result = api_post({'token': API_TOKEN, 'action': 'reset', 'username': username})
-    msg = await ctx.send(result)
-    await delete_after(ctx, msg)
+    try:
+        response = requests.post(url, data=data)
+        if response.status_code == 200:
+            key = response.text.strip()
+            msg = await ctx.send(f"🔑 `{member.name}` için key oluşturuldu:\n```{key}```")
+            await asyncio.sleep(5)
+            await ctx.message.delete()
+            await msg.delete()
+        else:
+            await ctx.send(f"❌ Key oluşturulamadı: `{response.text}`")
+    except Exception as e:
+        await ctx.send(f"⚠️ Sunucu hatası: `{str(e)}`")
 
-@bot.command()
-async def create(ctx, _, member: discord.Member):
-    result = api_post({'token': API_TOKEN, 'action': 'create', 'username': member.name})
-    msg = await ctx.send(result)
-    await delete_after(ctx, msg)
-
-@bot.command()
-async def listkeys(ctx):
-    result = api_post({'token': API_TOKEN, 'action': 'listkeys'})
-    msg = await ctx.send(f"📋 Key Listesi:\n```{result}```")
-    await delete_after(ctx, msg)
-
-@bot.command()
-async def delete(ctx, key: str):
-    result = api_post({'token': API_TOKEN, 'action': 'delete', 'key': key})
-    msg = await ctx.send(result)
-    await delete_after(ctx, msg)
-
-bot.run(TOKEN)
+# BOT TOKEN
+bot.run("BOT_TOKENİNİ_BURAYA_YAPIŞTIR")
