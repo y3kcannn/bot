@@ -67,11 +67,9 @@ async def key(ctx):
 async def keylist(ctx):
     url = "https://midnightponywka.com/data/keys.txt"
     try:
-        # URL'den dosya verisini alalım
         response = requests.get(url)
         
         if response.status_code == 200:
-            # Dosyayı başarılı bir şekilde çektik
             keys = response.text.strip().split("\n")  # Satırlara ayıralım
             if keys:
                 keys_list = ''.join([key.strip() + "\n" for key in keys])
@@ -96,8 +94,23 @@ async def komut(ctx):
     `!key` - Yeni bir key oluşturur
     `!keylist` - Anahtarları listeler
     `!komut` - Botun komutlarını gösterir
+    `!sürüm <x.x.x>` - Sürüm numarasını değiştirir
     """
     msg = await ctx.send(commands_list)
     await delete_after(ctx, msg)  # Mesajı 5 saniye sonra sil
+
+# !sürüm <x.x.x> komutu, version.txt dosyasındaki sürümü günceller
+@bot.command()
+async def sürüm(ctx, version: str):
+    file_path = "loader/version.txt"
+    try:
+        # Sürüm numarasını version.txt dosyasına yazalım
+        with open(file_path, 'w') as f:
+            f.write(version)
+        msg = await ctx.send(f"✅ Sürüm başarıyla değiştirildi: `{version}`")
+    except Exception as e:
+        msg = await ctx.send(f"⚠️ Sürüm değiştirilemedi: {str(e)}")
+    
+    await delete_after(ctx, msg)
 
 bot.run(TOKEN)
