@@ -4,7 +4,8 @@ import requests
 import os
 import asyncio
 
-DISCORD_TOKEN = "YOUR_DISCORD_BOT_TOKEN"
+# Railway üzerinden gelen environment değişkenini al
+DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 API_TOKEN = "ADMIN_API_SECRET_TOKEN_2024"
 BASE_URL = "https://midnightponywka.com/index.php?api=1&token=" + API_TOKEN
 
@@ -40,7 +41,6 @@ async def deletekey(ctx, key):
 
 @bot.command()
 async def keylist(ctx):
-    r = requests.get(BASE_URL + "&action=stats")
     keys = requests.get("https://midnightponywka.com/data/keys.txt").text.splitlines()[:20]
     msg = await ctx.send("🗝️ İlk 20 key:\n" + "\n".join(f"`{k}`" for k in keys))
     await delete_after(ctx, msg)
