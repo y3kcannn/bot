@@ -61,7 +61,7 @@ async def unban(ctx, username):
 
 @bot.command()
 async def userlist(ctx):
-    banned = requests.get("https://midnightponywka.com/loader/user.txt").text.splitlines()
+    banned = requests.get("https://midnightponywka.com/data/user.txt").text.splitlines()
     if banned:
         msg = await ctx.send("Banlı kullanıcılar:\n" + "\n".join(f"🚫 {u}" for u in banned[:20]))
     else:
@@ -92,18 +92,15 @@ async def stats(ctx):
     data = r.json()["data"]
     msg = await ctx.send(
         f"📊 **Sistem Durumu**\n"
-        f"🔑 Total: {data['keys']['total']} | Used: {data['keys']['used']} | Unused: {data['keys']['unused']}\n"
-        f"🚫 Banlı kullanıcı: {data['users']['total_banned']}\n"
-        f"🧩 Sürüm: {data['system']['version']}"
+        f"🔑 Total: {data['total_keys']} | Used: {data['used_keys']} | Unused: {data['unused_keys']}\n"
+        f"🚫 Banlı kullanıcı: {data['banned_users']}\n"
+        f"🧩 Sürüm: {data['version']}"
     )
     await delete_after(ctx, msg)
 
 @bot.command()
-async def auth(ctx, key, username=None):
-    payload = {"key": key}
-    if username:
-        payload["username"] = username
-    r = requests.post(BASE_URL + "&action=key-login", data=payload)
+async def auth(ctx, key):
+    r = requests.post(BASE_URL + "&action=key-login", data={"key": key})
     data = r.json()
     msg = await ctx.send(f"🔐 {data['message']}")
     await delete_after(ctx, msg)
@@ -112,6 +109,24 @@ async def auth(ctx, key, username=None):
 async def logs(ctx):
     log_raw = requests.get("https://midnightponywka.com/data/system.log").text.splitlines()
     msg = await ctx.send(f"📝 Son 10 log:\n```\n" + "\n".join(log_raw[-10:]) + "\n```")
+    await delete_after(ctx, msg)
+
+@bot.command()
+async def komut(ctx):
+    msg = await ctx.send(
+        "📘 **Komut Listesi:**\n"
+        "`!key` - Yeni key üret\n"
+        "`!deletekey <key>` - Key sil\n"
+        "`!keylist` - Key listesini göster\n"
+        "`!ban <kullanıcı>` - Kullanıcıyı banla\n"
+        "`!unban <kullanıcı>` - Banı kaldır\n"
+        "`!userlist` - Banlı kullanıcıları göster\n"
+        "`!reset` - Sistemi sıfırla\n"
+        "`!version [versiyon]` - Versiyonu göster/güncelle\n"
+        "`!stats` - Sistem istatistikleri\n"
+        "`!auth <key>` - Key doğrula\n"
+        "`!logs` - Son logları göster"
+    )
     await delete_after(ctx, msg)
 
 bot.run(DISCORD_TOKEN)
