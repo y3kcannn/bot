@@ -3,29 +3,28 @@ from discord.ext import commands
 import requests
 import os
 import asyncio
-from dotenv import load_dotenv
 
-load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = "YOUR_DISCORD_BOT_TOKEN"  # <-- buraya gerçek Discord bot token'ını koy
+API_TOKEN = "BEDIRHAN_SECRET"     # <-- PHP tarafındaki $secret_token ile birebir olmalı
+API_URL = "https://midnightponywka.com/loader/discord/api.php"
 
 intents = discord.Intents.default()
 intents.message_content = True
-
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-API_URL = "https://midnightponywka.com/loader/discord/api.php"
-
+# Ortak mesaj temizleyici
 async def delete_after(ctx, msg):
     await asyncio.sleep(5)
     await msg.delete()
     await ctx.message.delete()
 
-async def send_api_request(data):
+# API'ye istek at
+def api_post(data):
     try:
-        response = requests.post(API_URL, data=data)
+        response = requests.post(API_URL, data=data, timeout=5)
         return response.text.strip()
     except Exception as e:
-        return f"API Hatası: {e}"
+        return f"⚠️ API hatası: {str(e)}"
 
 @bot.event
 async def on_ready():
@@ -33,44 +32,38 @@ async def on_ready():
 
 @bot.command()
 async def ban(ctx, username: str):
-    result = await send_api_request({'type': 'ban', 'username': username})
-    msg = await ctx.send(f"`{username}` başarıyla banlandı! 🔨" if "Success" in result else f"❌ Ban başarısız: {result}")
+    result = api_post({'token': API_TOKEN, 'action': 'ban', 'username': username})
+    msg = await ctx.send(result)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def unban(ctx, username: str):
-    result = await send_api_request({'type': 'unban', 'username': username})
-    msg = await ctx.send(f"`{username}` başarıyla unbanlandı ✅" if "Success" in result else f"❌ Unban başarısız: {result}")
-    await delete_after(ctx, msg)
-
-@bot.command()
-async def create(ctx, _, member: discord.Member):
-    result = await send_api_request({'type': 'create', 'username': member.name})
-    msg = await ctx.send(f"🔑 `{member.name}` için key oluşturuldu: `{result}`" if "Success" not in result else result)
+    result = api_post({'token': API_TOKEN, 'action': 'unban', 'username': username})
+    msg = await ctx.send(result)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def reset(ctx, username: str):
-    result = await send_api_request({'type': 'reset', 'username': username})
-    msg = await ctx.send(f"`{username}` kullanımı sıfırlandı 🔁" if "Success" in result else f"❌ Sıfırlama başarısız: {result}")
+    result = api_post({'token': API_TOKEN, 'action': 'reset', 'username': username})
+    msg = await ctx.send(result)
+    await delete_after(ctx, msg)
+
+@bot.command()
+async def create(ctx, _, member: discord.Member):
+    result = api_post({'token': API_TOKEN, 'action': 'create', 'username': member.name})
+    msg = await ctx.send(result)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def listkeys(ctx):
-    result = await send_api_request({'type': 'list'})
+    result = api_post({'token': API_TOKEN, 'action': 'listkeys'})
     msg = await ctx.send(f"📋 Key Listesi:\n```{result}```")
     await delete_after(ctx, msg)
 
 @bot.command()
 async def delete(ctx, key: str):
-    result = await send_api_request({'type': 'delete', 'key': key})
-    msg = await ctx.send(f"`{key}` silindi 🗑️" if "Success" in result else f"❌ Silinemedi: {result}")
-    await delete_after(ctx, msg)
-
-@bot.command()
-async def stats(ctx):
-    result = await send_api_request({'type': 'stats'})
-    msg = await ctx.send(f"📊 İstatistik:\n```{result}```")
+    result = api_post({'token': API_TOKEN, 'action': 'delete', 'key': key})
+    msg = await ctx.send(result)
     await delete_after(ctx, msg)
 
 bot.run(TOKEN)
