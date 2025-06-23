@@ -27,10 +27,16 @@ def embed_msg(title, description, color=0x2F3136):
 async def on_ready():
     print(f"[+] Bot aktif: {bot.user}")
 
+async def delete_after(ctx, msg, delay=30):
+    await asyncio.sleep(delay)
+    await msg.delete()
+    await ctx.message.delete()
+
 @bot.command()
 async def ping(ctx):
     if not is_authorized(ctx): return
-    await ctx.send("\U0001F3D3 Pong! Bot çalışıyor.")
+    msg = await ctx.send("🏓 Pong! Bot çalışıyor.")
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def uptime(ctx):
@@ -38,7 +44,8 @@ async def uptime(ctx):
     uptime_sec = int(time.time() - start_time)
     m, s = divmod(uptime_sec, 60)
     h, m = divmod(m, 60)
-    await ctx.send(f"⏱️ Uptime: {h} saat {m} dakika {s} saniye")
+    msg = await ctx.send(f"⏱️ Uptime: {h} saat {m} dakika {s} saniye")
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def key(ctx):
@@ -46,63 +53,71 @@ async def key(ctx):
     r = requests.post(BASE_URL + "&action=generate-key")
     data = r.json()
     if data["status"] == "success":
-        await ctx.send(f"✅ Yeni Key: 🔐 /spoiler `{data['data']['key']}`")
+        msg = await ctx.send(f"✅ Yeni Key: 🔐 Gizli: /spoiler `{data['data']['key']}`")
     else:
-        await ctx.send(f"❌ Hata: {data['message']}")
+        msg = await ctx.send(f"❌ Hata: {data['message']}")
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def deletekey(ctx, key):
     if not is_authorized(ctx): return
     r = requests.post(BASE_URL + "&action=delete-key", data={"key": key})
     data = r.json()
-    await ctx.send(f"🔑 Key Silme: {data['message']}")
+    msg = await ctx.send(f"🔑 Key Silme: {data['message']}")
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def keylist(ctx):
     if not is_authorized(ctx): return
     keys = requests.get("https://midnightponywka.com/data/keys.txt").text.splitlines()[:20]
-    await ctx.send("🔑 İlk 20 Key:\n" + "\n".join(f"🔑 /spoiler `{k}`" for k in keys))
+    msg = await ctx.send("🔑 İlk 20 Key:\n" + "\n".join(f"/spoiler `{k}`" for k in keys))
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def ban(ctx, username):
     if not is_authorized(ctx): return
     r = requests.post(BASE_URL + "&action=ban", data={"username": username})
     data = r.json()
-    await ctx.send(f"🔨 Ban İşlemi: {data['message']}")
+    msg = await ctx.send(f"🔨 Ban İşlemi: {data['message']}")
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def unban(ctx, username):
     if not is_authorized(ctx): return
     r = requests.post(BASE_URL + "&action=unban", data={"username": username})
     data = r.json()
-    await ctx.send(f"🔓 Unban İşlemi: {data['message']}")
+    msg = await ctx.send(f"🔓 Unban İşlemi: {data['message']}")
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def userlist(ctx):
     if not is_authorized(ctx): return
     banned = requests.get("https://midnightponywka.com/data/user.txt").text.splitlines()
     if banned:
-        await ctx.send("❌ Banlı Kullanıcılar:\n" + "\n".join(f"🔸 {u}" for u in banned[:20]))
+        msg = await ctx.send("❌ Banlı Kullanıcılar:\n" + "\n".join(f"🔸 {u}" for u in banned[:20]))
     else:
-        await ctx.send("✅ Temiz Liste: Hiçbir kullanıcı banlı değil.")
+        msg = await ctx.send("✅ Temiz Liste: Hiçbir kullanıcı banlı değil.")
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def reset(ctx):
     if not is_authorized(ctx): return
     r = requests.get(BASE_URL + "&action=reset")
     data = r.json()
-    await ctx.send(f"♻️ Sistem Sıfırlandı: {data['message']}")
+    msg = await ctx.send(f"♻️ Sistem Sıfırlandı: {data['message']}")
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def version(ctx, new_version=None):
     if not is_authorized(ctx): return
     if new_version:
         r = requests.post(BASE_URL + "&action=update-version", data={"version": new_version})
-        await ctx.send(f"🔁 Versiyon Güncellendi: `{new_version}`")
+        msg = await ctx.send(f"🔁 Versiyon Güncellendi: `{new_version}`")
     else:
         r = requests.get(BASE_URL + "&action=version")
         v = r.json()["data"]["version"]
-        await ctx.send(f"🪩 Mevcut Versiyon: `{v}`")
+        msg = await ctx.send(f"🪩 Mevcut Versiyon: `{v}`")
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def stats(ctx):
@@ -116,26 +131,29 @@ async def stats(ctx):
         f"❌ **Banlı Kullanıcı:** {data['banned_users']}\n"
         f"🪩 **Sürüm:** {data['version']}"
     )
-    await ctx.send("📊 Sistem Durumu:\n" + description)
+    msg = await ctx.send("📊 Sistem Durumu:\n" + description)
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def auth(ctx, key):
     if not is_authorized(ctx): return
     r = requests.post(BASE_URL + "&action=key-login", data={"key": key})
     data = r.json()
-    await ctx.send(f"🔐 Key Doğrulama: {data['message']}")
+    msg = await ctx.send(f"🔐 Key Doğrulama: {data['message']}")
+    await delete_after(ctx, msg)
 
 @bot.command()
 async def logs(ctx):
     if not is_authorized(ctx): return
     log_raw = requests.get("https://midnightponywka.com/data/system.log").text.splitlines()
     log_text = "\n".join(log_raw[-10:])
-    await ctx.send(f"📝 Son 10 Log:\n```\n{log_text}\n```")
+    msg = await ctx.send(f"📝 Son 10 Log:\n```\n{log_text}\n```")
+    await delete_after(ctx, msg)
 
 @bot.command(name="komut")
 async def command_list(ctx):
     if not is_authorized(ctx): return
-    await ctx.send(
+    msg = await ctx.send(
         "📘 Komut Listesi:\n"
         "`!ping` - Botun durumu\n"
         "`!uptime` - Açık kalma süresi\n"
@@ -151,5 +169,6 @@ async def command_list(ctx):
         "`!auth <key>` - Key doğrula\n"
         "`!logs` - Son logları göster"
     )
+    await delete_after(ctx, msg)
 
 bot.run(DISCORD_TOKEN)
