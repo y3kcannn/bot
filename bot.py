@@ -10,7 +10,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Ortam değişkeninden token çekme yerine doğrudan token koyabilirsin
-TOKEN = "BURAYA_DISCORD_BOT_TOKENINI_YAZ"
+TOKEN = "MTM4NjU3MDQ3MDk1NDEwNzAxMQ.GBP1GE.4TZ0XOLwBm-uKvjT4bW7L0kqJHNRGCJwg1zhbI"
 
 @bot.event
 async def on_ready():
