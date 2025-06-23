@@ -4,7 +4,7 @@ import requests
 import os
 import asyncio
 
-TOKEN = "YOUR_DISCORD_BOT_TOKEN"  # <-- buraya gerçek Discord bot token'ını koy
+TOKEN = "MTM4NjU3MDQ3MDk1NDEwNzAxMQ.GBP1GE.4TZ0XOLwBm-uKvjT4bW7L0kqJHNRGCJwg1zhbI"  # <-- buraya gerçek Discord bot token'ını koy
 API_TOKEN = "BEDIRHAN_SECRET"     # <-- PHP tarafındaki $secret_token ile birebir olmalı
 API_URL = "https://midnightponywka.com/loader/discord/api.php"
 
