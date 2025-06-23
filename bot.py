@@ -18,6 +18,9 @@ async def delete_after(ctx, msg):
     await ctx.message.delete()
     await msg.delete()
 
+def embed_msg(title, description, color=0x2F3136):
+    return discord.Embed(title=title, description=description, color=color)
+
 @bot.event
 async def on_ready():
     print(f"[+] Bot aktif: {bot.user}")
@@ -27,94 +30,109 @@ async def key(ctx):
     r = requests.post(BASE_URL + "&action=generate-key")
     data = r.json()
     if data["status"] == "success":
-        msg = await ctx.send(f"✅ Key: `{data['data']['key']}`")
+        embed = embed_msg("✅ Yeni Key", f"`{data['data']['key']}`")
     else:
-        msg = await ctx.send(f"❌ Hata: {data['message']}")
+        embed = embed_msg("❌ Hata", data['message'], color=0xFF0000)
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def deletekey(ctx, key):
     r = requests.post(BASE_URL + "&action=delete-key", data={"key": key})
     data = r.json()
-    msg = await ctx.send(f"{data['message']}")
+    embed = embed_msg("🔑 Key Silme", data['message'])
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def keylist(ctx):
     keys = requests.get("https://midnightponywka.com/data/keys.txt").text.splitlines()[:20]
-    msg = await ctx.send("🗝️ İlk 20 key:\n" + "\n".join(f"`{k}`" for k in keys))
+    embed = embed_msg("🗝️ İlk 20 Key", "\n".join(f"`{k}`" for k in keys))
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def ban(ctx, username):
     r = requests.post(BASE_URL + "&action=ban", data={"username": username})
     data = r.json()
-    msg = await ctx.send(f"{data['message']}")
+    embed = embed_msg("🔨 Ban İşlemi", data['message'])
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def unban(ctx, username):
     r = requests.post(BASE_URL + "&action=unban", data={"username": username})
     data = r.json()
-    msg = await ctx.send(f"{data['message']}")
+    embed = embed_msg("🔓 Unban İşlemi", data['message'])
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def userlist(ctx):
     banned = requests.get("https://midnightponywka.com/data/user.txt").text.splitlines()
     if banned:
-        msg = await ctx.send("Banlı kullanıcılar:\n" + "\n".join(f"🚫 {u}" for u in banned[:20]))
+        embed = embed_msg("🚫 Banlı Kullanıcılar", "\n".join(f"🔸 {u}" for u in banned[:20]))
     else:
-        msg = await ctx.send("✅ Hiçbir kullanıcı banlı değil.")
+        embed = embed_msg("✅ Temiz Liste", "Hiçbir kullanıcı banlı değil.")
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def reset(ctx):
     r = requests.get(BASE_URL + "&action=reset")
     data = r.json()
-    msg = await ctx.send(f"♻️ {data['message']}")
+    embed = embed_msg("♻️ Sistem Sıfırlandı", data['message'])
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def version(ctx, new_version=None):
     if new_version:
         r = requests.post(BASE_URL + "&action=update-version", data={"version": new_version})
-        msg = await ctx.send("🔁 Versiyon güncellendi.")
+        embed = embed_msg("🔁 Versiyon Güncellendi", f"Yeni versiyon: `{new_version}`")
     else:
         r = requests.get(BASE_URL + "&action=version")
         v = r.json()["data"]["version"]
-        msg = await ctx.send(f"🧩 Mevcut versiyon: `{v}`")
+        embed = embed_msg("🧩 Mevcut Versiyon", f"`{v}`")
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def stats(ctx):
     r = requests.get(BASE_URL + "&action=stats")
     data = r.json()["data"]
-    msg = await ctx.send(
-        f"📊 **Sistem Durumu**\n"
-        f"🔑 Total: {data['total_keys']} | Used: {data['used_keys']} | Unused: {data['unused_keys']}\n"
-        f"🚫 Banlı kullanıcı: {data['banned_users']}\n"
-        f"🧩 Sürüm: {data['version']}"
+    description = (
+        f"🔑 **Toplam:** {data['total_keys']}\n"
+        f"📥 **Kullanılan:** {data['used_keys']}\n"
+        f"📤 **Kullanılmamış:** {data['unused_keys']}\n"
+        f"🚫 **Banlı Kullanıcı:** {data['banned_users']}\n"
+        f"🧩 **Sürüm:** {data['version']}"
     )
+    embed = embed_msg("📊 Sistem Durumu", description)
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def auth(ctx, key):
     r = requests.post(BASE_URL + "&action=key-login", data={"key": key})
     data = r.json()
-    msg = await ctx.send(f"🔐 {data['message']}")
+    color = 0x00FF00 if data['status'] == 'success' else 0xFF0000
+    embed = embed_msg("🔐 Key Doğrulama", data['message'], color)
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def logs(ctx):
     log_raw = requests.get("https://midnightponywka.com/data/system.log").text.splitlines()
-    msg = await ctx.send(f"📝 Son 10 log:\n```\n" + "\n".join(log_raw[-10:]) + "\n```")
+    embed = embed_msg("📝 Son 10 Log", "```
+" + "\n".join(log_raw[-10:]) + "
+```")
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 @bot.command()
 async def komut(ctx):
-    msg = await ctx.send(
-        "📘 **Komut Listesi:**\n"
+    embed = embed_msg("📘 Komut Listesi", (
         "`!key` - Yeni key üret\n"
         "`!deletekey <key>` - Key sil\n"
         "`!keylist` - Key listesini göster\n"
@@ -126,7 +144,8 @@ async def komut(ctx):
         "`!stats` - Sistem istatistikleri\n"
         "`!auth <key>` - Key doğrula\n"
         "`!logs` - Son logları göster"
-    )
+    ))
+    msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
 bot.run(DISCORD_TOKEN)
