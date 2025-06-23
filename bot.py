@@ -3,8 +3,8 @@ from discord.ext import commands
 import requests
 import os
 import asyncio
+import time
 
-# Railway üzerinden gelen environment değişkenini al
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 API_TOKEN = "ADMIN_API_SECRET_TOKEN_2024"
 BASE_URL = "https://midnightponywka.com/index.php?api=1&token=" + API_TOKEN
@@ -13,8 +13,10 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-async def delete_after(ctx, msg):
-    await asyncio.sleep(5)
+start_time = time.time()
+
+async def delete_after(ctx, msg, delay=30):
+    await asyncio.sleep(delay)
     await ctx.message.delete()
     await msg.delete()
 
@@ -26,11 +28,26 @@ async def on_ready():
     print(f"[+] Bot aktif: {bot.user}")
 
 @bot.command()
+async def ping(ctx):
+    embed = embed_msg("🏓 Pong!", "Bot çalışıyor.")
+    msg = await ctx.send(embed=embed)
+    await delete_after(ctx, msg)
+
+@bot.command()
+async def uptime(ctx):
+    uptime_sec = int(time.time() - start_time)
+    m, s = divmod(uptime_sec, 60)
+    h, m = divmod(m, 60)
+    embed = embed_msg("⏱️ Uptime", f"{h} saat {m} dakika {s} saniye")
+    msg = await ctx.send(embed=embed)
+    await delete_after(ctx, msg)
+
+@bot.command()
 async def key(ctx):
     r = requests.post(BASE_URL + "&action=generate-key")
     data = r.json()
     if data["status"] == "success":
-        embed = embed_msg("✅ Yeni Key", f"`{data['data']['key']}`")
+        embed = embed_msg("✅ Yeni Key", "||``" + data['data']['key'] + "``||")
     else:
         embed = embed_msg("❌ Hata", data['message'], color=0xFF0000)
     msg = await ctx.send(embed=embed)
@@ -47,7 +64,7 @@ async def deletekey(ctx, key):
 @bot.command()
 async def keylist(ctx):
     keys = requests.get("https://midnightponywka.com/data/keys.txt").text.splitlines()[:20]
-    embed = embed_msg("🗝️ İlk 20 Key", "\n".join(f"`{k}`" for k in keys))
+    embed = embed_msg("🗝️ İlk 20 Key", "\n".join(f"||`{k}`||" for k in keys))
     msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
@@ -128,9 +145,11 @@ async def logs(ctx):
     msg = await ctx.send(embed=embed)
     await delete_after(ctx, msg)
 
-@bot.command()
-async def komut(ctx):
+@bot.command(name="komut")
+async def command_list(ctx):
     embed = embed_msg("📘 Komut Listesi", (
+        "`!ping` - Botun durumu\n"
+        "`!uptime` - Açık kalma süresi\n"
         "`!key` - Yeni key üret\n"
         "`!deletekey <key>` - Key sil\n"
         "`!keylist` - Key listesini göster\n"
