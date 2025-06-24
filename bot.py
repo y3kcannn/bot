@@ -14,8 +14,8 @@ ADMIN_TOKEN = "ADMIN_API_SECRET_TOKEN_2024"
 intents = discord.Intents.default()
 intents.message_content = True
 
-# Bot oluştur
-bot = commands.Bot(command_prefix='!', intents=intents)
+# Bot oluştur - Varsayılan help komutunu devre dışı bırak
+bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
 @bot.event
 async def on_ready():
@@ -259,7 +259,7 @@ async def show_stats(ctx):
     
     await loading_msg.delete()
     
-    if result.get('status') == 'success':
+    if result.get('status') in ['success', 'online']:  # Both success and online are valid
         embed = discord.Embed(
             title="📊 Keylogin Sistem İstatistikleri",
             color=0x0099ff
@@ -276,7 +276,6 @@ async def show_stats(ctx):
         embed.add_field(name="🌐 Server", value="midnightponywka.com", inline=True)
         
         embed.set_footer(text=f"Son güncelleme: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/852899976668004362.png")  # İsteğe bağlı
     else:
         embed = discord.Embed(
             title="❌ Hata",
@@ -387,7 +386,8 @@ async def show_help(ctx):
     embed.add_field(
         name="📊 Sistem",
         value="`!stats` - Sistem istatistikleri\n"
-              "`!help` - Bu yardım menüsü",
+              "`!help` - Bu yardım menüsü\n"
+              "`!ping` - Bot gecikmesi",
         inline=False
     )
     
@@ -462,4 +462,4 @@ if __name__ == "__main__":
         print("📝 Discord Developer Portal'dan doğru token'ı aldığından emin ol")
     except Exception as e:
         print(f"❌ HATA: {e}")
-        input("Devam etmek için Enter'a bas...")
+        input("Devam etmek için Enter'a bas...") 
