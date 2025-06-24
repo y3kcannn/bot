@@ -494,6 +494,53 @@ async def unban_user(ctx, username=None, ip=None):
     # Log to console
     print(f"✅ User unbanned by {ctx.author}: {username} / {ip}")
 
+@bot.command(name='cleanup')
+@has_admin_role()
+async def cleanup_keys(ctx):
+    """Süresi dolmuş keyleri temizler (30 dakika)"""
+    
+    # Delete user's command message
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    # Create loading embed
+    loading_embed = create_embed(
+        "🧹 Key Temizleme İşlemi...",
+        "**⏳ Süresi dolmuş keyler kontrol ediliyor...**",
+        0xffff00
+    )
+    msg = await ctx.send(embed=loading_embed)
+    
+    # Cleanup via API
+    result = make_api_request('cleanup-keys')
+    
+    if 'error' in result:
+        error_embed = create_embed(
+            "❌ Temizleme Hatası",
+            f"**Hata:** {result['error']}",
+            0xff0000
+        )
+        await msg.edit(embed=error_embed)
+        return
+    
+    # Success embed
+    success_embed = create_embed(
+        "🧹 Key Temizleme Tamamlandı",
+        f"**📝 Durum:** {result.get('message', 'Temizleme işlemi tamamlandı')}\n**👮 İşlemi Yapan:** {ctx.author.mention}",
+        0x00ff00
+    )
+    success_embed.add_field(
+        name="ℹ️ Bilgi", 
+        value="Kullanıldıktan 30 dakika sonra keyler otomatik olarak silinir.", 
+        inline=False
+    )
+    await msg.edit(embed=success_embed)
+    
+    # Log to console
+    print(f"🧹 Cleanup performed by {ctx.author}")
+
 @bot.command(name='help')
 async def show_help(ctx):
     """Show available commands"""
@@ -513,7 +560,7 @@ async def show_help(ctx):
     # Ana komutlar - İki sütunlu düzen
     help_embed.add_field(
         name="🔑 Key Yönetimi",
-        value="```\n!genkey  - Yeni lisans anahtarı\n!keys    - Key listesi\n!stats   - İstatistikler```",
+        value="```\n!genkey  - Yeni lisans anahtarı\n!keys    - Key listesi\n!cleanup - Süresi dolmuş keyler\n!stats   - İstatistikler```",
         inline=True
     )
     
