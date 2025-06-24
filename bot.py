@@ -626,98 +626,42 @@ async def show_help(ctx):
         pass
     
     help_embed = create_embed(
-        "🔐 Keylogin Management Bot",
-        f"**👋 Merhaba {ctx.author.mention}!**\n\n**🤖 Bot Version:** 2.0 | **🎯 Admin Role:** `{ADMIN_ROLE}`",
-        0x00d4ff
+        "🎯 MIDNIGHT KEYLOGIN BOT",
+        "**Available Commands & Usage Guide**",
+        0x7289DA
     )
     
-    # Ana komutlar - İki sütunlu düzen
+    # İki sütunlu layout
     help_embed.add_field(
-        name="🔑 Key Yönetimi",
-        value="```\n!genkey  - Yeni lisans anahtarı\n!keys    - Key listesi\n!cleanup - Süresi dolmuş keyler\n!stats   - İstatistikler```",
+        name="🔑 Key Management",
+        value="`!genkey` - Generate new access key\n`!keys` - List all keys\n`!cleanup` - Clean expired keys",
         inline=True
     )
     
     help_embed.add_field(
-        name="🔧 Sistem Yönetimi",
-        value="```\n!version - Version kontrol/güncelle\n         - Loader versiyonu\n         - Otomatik güncelleme```",
+        name="⚡ Quick Actions",
+        value="`!stats` - Show system statistics\n`!version` - Version control/update\n`!help` - Show this help menu",
         inline=True
     )
     
-    help_embed.add_field(
-        name="❓ Yardım",
-        value="```\n!help    - Bu yardım menüsü\n         - Detaylı bilgi\n         - Komut örnekleri```",
-        inline=True
-    )
-    
-    # Boş alan ekle (simetri için)
+    # Boş alan
     help_embed.add_field(name="\u200b", value="\u200b", inline=False)
     
-    # Ban yönetimi - İki sütunlu
     help_embed.add_field(
-        name="🚫 Ban İşlemleri",
-        value="```\n!ban     - Kullanıcı banla\n!unban   - Ban kaldır\n!banned  - Ban listesi```",
+        name="🚫 Ban System",
+        value="`!ban <user>` - Ban username + IP\n`!ban _ <ip>` - Ban only IP\n`!unban <user>` - Unban user",
         inline=True
     )
     
     help_embed.add_field(
-        name="🔍 Ban Kontrol",
-        value="```\n!checkban - Ban durumu\n          - Kullanıcı kontrol\n          - IP kontrol```",
+        name="📊 Information",
+        value="`!checkban <user>` - Check ban status\n`!banned` - List banned users",
         inline=True
     )
     
-    # Boş alan ekle (simetri için)
-    help_embed.add_field(name="\u200b", value="\u200b", inline=False)
-    
-    # Kullanım örnekleri - Tek sütun, ortalanmış
-    help_embed.add_field(
-        name="📚 Kullanım Örnekleri",
-        value="""
-```yaml
-Key İşlemleri:
-  !genkey                    # Yeni key oluştur
-  !keys                      # Tüm keyleri listele
-
-Ban İşlemleri:
-  !ban TestUser              # Kullanıcı + IP banla
-  !ban _ 192.168.1.100       # Sadece IP banla
-  !unban TestUser            # Ban kaldır
-  !checkban TestUser         # Ban kontrol et
-
-Sistem:
-  !stats                     # Detaylı istatistikler
-```""",
-        inline=False
-    )
-    
-    # Ban sistemi açıklaması - Tek sütun
-    help_embed.add_field(
-        name="⚠️ Ban Sistemi Nasıl Çalışır?",
-        value="""
-**• Kullanıcı Ban:** `!ban TestUser` → Hem kullanıcı adı hem IP'si banlanır
-**• IP Ban:** `!ban _ 192.168.1.1` → Sadece belirtilen IP banlanır  
-**• Çifte Ban:** `!ban TestUser 192.168.1.1` → Her ikisi de banlanır
-**• Güvenlik:** Bannlanan kullanıcı farklı isimle girse bile IP'den engellenir
-        """,
-        inline=False
-    )
-    
-    # Alt bilgi alanları - İki sütunlu
-    help_embed.add_field(
-        name="🔒 Yetki Bilgisi",
-        value=f"**Gerekli Rol:** `{ADMIN_ROLE}`\n**Yetki Kontrolü:** Aktif\n**Güvenlik:** Maksimum",
-        inline=True
-    )
-    
-    help_embed.add_field(
-        name="🔗 Sistem Durumu",
-        value=f"**API:** 🟢 Bağlı\n**Bot:** 🟢 Aktif\n**Database:** 🟢 Çalışıyor",
-        inline=True
-    )
-    
-    # Footer bilgisi - Geliştirilmiş
+    # Footer
     help_embed.set_footer(
-        text="🛡️ Tüm işlemler loglanır • Güvenlik altındadır • Keylogin Management v2.0",
+        text=f"🎮 MIDNIGHT PONYWKA | Requested by {ctx.author.display_name}",
         icon_url=bot.user.avatar.url if bot.user.avatar else None
     )
     
