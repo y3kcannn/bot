@@ -667,6 +667,63 @@ async def update_version(ctx, new_version=None):
     # Auto delete after 6 seconds
     asyncio.create_task(auto_delete_message(msg))
 
+@bot.command(name='downloads')
+@has_admin_role()
+async def show_downloads(ctx):
+    """Show download logs"""
+    
+    # Delete user's command message
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    result = make_api_request('download-logs')
+    
+    if 'error' in result:
+        error_embed = create_embed(
+            "❌ Download Log Hatası",
+            f"**Hata:** {result['error']}",
+            0xff0000
+        )
+        msg = await ctx.send(embed=error_embed)
+        asyncio.create_task(auto_delete_message(msg))
+        return
+    
+    logs = result.get('download_logs', [])
+    
+    if not logs:
+        empty_embed = create_embed(
+            "📥 Download Logları",
+            "**Henüz download kaydı bulunmuyor.**",
+            0xffff00
+        )
+        msg = await ctx.send(embed=empty_embed)
+        asyncio.create_task(auto_delete_message(msg))
+        return
+    
+    download_embed = create_embed(
+        "📥 Download Logları",
+        f"**📊 Son {len(logs)} download kaydı**\n**🔍 Talep Eden:** {ctx.author.mention}",
+        0x00aaff
+    )
+    
+    log_text = ""
+    for log in logs[-10:]:  # Son 10 download
+        status_emoji = "✅" if log['status'] == 'success' else "❌"
+        log_text += f"{status_emoji} **{log['file']}** - `{log['key'][:8]}...`\n"
+        log_text += f"   📅 {log['timestamp']} • 🌐 {log['ip']}\n\n"
+    
+    if log_text:
+        download_embed.add_field(
+            name="📋 Son İndirmeler",
+            value=log_text,
+            inline=False
+        )
+    
+    msg = await ctx.send(embed=download_embed)
+    asyncio.create_task(auto_delete_message(msg))
+
 @bot.command(name='help')
 async def show_help(ctx):
     """Show available commands"""
@@ -707,7 +764,7 @@ async def show_help(ctx):
     
     help_embed.add_field(
         name="📊 Information",
-        value="`!checkban <kullanıcı>` - Ban durumunu kontrol et\n`!banned` - Banli kullanıcıları listele",
+        value="`!checkban <kullanıcı>` - Ban durumunu kontrol et\n`!banned` - Banli kullanıcıları listele\n`!downloads` - Download loglarını göster",
         inline=True
     )
     
