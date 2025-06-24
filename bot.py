@@ -37,28 +37,38 @@ async def on_ready():
 async def make_api_request(action, data=None):
     url = f"{API_URL}/?api=1&token={API_TOKEN}&action={action}"
     try:
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=30)  # 30 saniye timeout
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             if data:
                 async with session.post(url, data=data) as response:
-                    return await response.json()
+                    if response.status == 200:
+                        return await response.json()
+                    else:
+                        return {"status": "error", "message": f"HTTP {response.status}"}
             else:
                 async with session.get(url) as response:
-                    return await response.json()
+                    if response.status == 200:
+                        return await response.json()
+                    else:
+                        return {"status": "error", "message": f"HTTP {response.status}"}
+    except asyncio.TimeoutError:
+        return {"status": "error", "message": "Request timeout"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-# Key generation
+# Key generation - 16 basamaklı random
 def generate_key(key_type="normal"):
-    if key_type.lower() == "vip":
-        return f"SPFR-VIP-{''.join(random.choices(string.ascii_uppercase + string.digits, k=4))}"
-    elif key_type.lower() in ["premium", "prem"]:
-        return f"SPFR-PREM-{''.join(random.choices(string.ascii_uppercase + string.digits, k=4))}"
-    else:
-        return f"SPFR-{''.join(random.choices(string.ascii_uppercase + string.digits, k=4))}-{''.join(random.choices(string.ascii_uppercase + string.digits, k=4))}"
+    import time
+    # Daha random seed için timestamp kullan
+    random.seed(int(time.time() * 1000000) % 2**32)
+    
+    chars = string.ascii_uppercase + string.digits
+    # 16 basamaklı random key: 1231ASD235FFS123 gibi
+    return ''.join(random.choices(chars, k=16))
 
-# 1. !key [tip] [sayı] - Key üretme
+# 1. !key [sayı] - Key üretme (16 basamaklı)
 @bot.command(name='key')
-async def key_command(ctx, key_type="normal", count=1):
+async def key_command(ctx, count=1):
     # Kullanıcının mesajını sil
     try:
         await ctx.message.delete()
@@ -71,48 +81,58 @@ async def key_command(ctx, key_type="normal", count=1):
             await ctx.send("❌ Key sayısı 1-10 arasında olmalı!")
             return
             
-        # Tip kontrolü ve düzeltme
-        if isinstance(key_type, int):
-            # Eğer ilk parametre sayı ise, count olarak al
-            count = key_type
-            key_type = "normal"
-        elif key_type.lower() not in ["normal", "premium", "prem", "vip"]:
-            # Geçersiz tip ise normal yap
-            key_type = "normal"
-            
         # Key'leri üret ve ekle - Gelişmiş sistem
         generated_keys = []
         failed_keys = []
         
         for i in range(count):
-            # 10 deneme yap unique key için
+            # 20 deneme yap unique key için (artırdık)
             key_generated = False
-            for attempt in range(10):
-                new_key = generate_key(key_type)
+            last_error = "Unknown error"
+            
+            for attempt in range(20):
+                new_key = generate_key()
                 result = await make_api_request("add-key", {"key": new_key})
                 
-                if result.get("status") == "success":
-                    generated_keys.append(new_key)
-                    key_generated = True
-                    break
-                elif "already exists" in result.get("message", "").lower():
-                    # Key zaten var, tekrar dene
-                    continue
+                # Response kontrolü
+                if isinstance(result, dict):
+                    if result.get("status") == "success":
+                        generated_keys.append(new_key)
+                        key_generated = True
+                        break
+                    elif "already exists" in result.get("message", "").lower():
+                        # Key zaten var, tekrar dene
+                        continue
+                    else:
+                        # Başka bir hata
+                        last_error = result.get("message", "API error")
+                        # Rate limit kontrolü
+                        if "request" in last_error.lower() or "wait" in last_error.lower():
+                            await asyncio.sleep(2)  # 2 saniye bekle
+                            continue
+                        break
                 else:
-                    # Başka bir hata
+                    # Response dict değilse
+                    last_error = "Invalid API response"
                     break
+                    
+                # Her deneme arasında kısa pause
+                if attempt < 19:
+                    await asyncio.sleep(0.1)
             
             if not key_generated:
-                failed_keys.append(f"Attempt {i+1}")
+                failed_keys.append(f"Key {i+1}: {last_error}")
         
         # Sonuçları göster
         if generated_keys:
             keys_text = "\n".join([f"`{key}`" for key in generated_keys])
-            type_emoji = "👑" if key_type.lower() == "vip" else "💎" if key_type.lower() in ["premium", "prem"] else "🔑"
-            await ctx.send(f"{type_emoji} **{len(generated_keys)} adet {key_type.upper()} key oluşturuldu:**\n{keys_text}")
+            await ctx.send(f"🔑 **{len(generated_keys)} adet key oluşturuldu:**\n{keys_text}")
         
         if failed_keys:
-            await ctx.send(f"⚠️ {len(failed_keys)} key oluşturulamadı. Tekrar deneyin.")
+            if len(failed_keys) == 1:
+                await ctx.send(f"⚠️ 1 key oluşturulamadı. Sunucu yoğun, tekrar deneyin.")
+            else:
+                await ctx.send(f"⚠️ {len(failed_keys)} key oluşturulamadı. Sunucu yoğun, tekrar deneyin.")
             
     except ValueError:
         await ctx.send("❌ Geçersiz sayı girdiniz!")
