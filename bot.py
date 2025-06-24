@@ -9,9 +9,13 @@ import random
 import string
 
 # Bot ayarları - Railway'den environment variable'ı al
-BOT_TOKEN = os.getenv('DISCORD_TOKEN')  # Railway'de DISCORD_TOKEN olarak kayıtlı
+BOT_TOKEN = os.getenv('DISCORD_TOKEN') or os.getenv('BOT_TOKEN')
 API_BASE_URL = "https://midnightponywka.com"
 ADMIN_TOKEN = "ADMIN_API_SECRET_TOKEN_2024"
+
+if not BOT_TOKEN:
+    print("Bot token bulunamadı!")
+    exit(1)
 
 # Bot intents
 intents = discord.Intents.default()
@@ -101,6 +105,11 @@ async def generate_key_command(ctx, key_type=None, count=None):
     Types: normal, premium, vip
     Count: 1-10 arası
     """
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
     
     # Parametreleri kontrol et
     if count is None:
@@ -278,6 +287,12 @@ async def generate_key_command(ctx, key_type=None, count=None):
 @bot.command(name='addkey', aliases=['add'])
 async def add_key(ctx, key=None):
     """Key ekle - Kullanım: !addkey <key>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
     if key is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -312,11 +327,15 @@ async def add_key(ctx, key=None):
     
     await ctx.send(embed=embed)
 
-# ... existing code ...
-
 @bot.command(name='deletekey', aliases=['delete', 'remove'])
 async def delete_key(ctx, key=None):
     """Key sil - Kullanım: !deletekey <key>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
     if key is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -385,6 +404,12 @@ async def delete_key(ctx, key=None):
 @bot.command(name='keylist', aliases=['keys', 'list'])
 async def list_keys(ctx):
     """Tüm key'leri listele (SID bilgisi ile)"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
     loading_msg = await ctx.send("⏳ Key'ler getiriliyor...")
     
     result = make_api_request('list-keys')
@@ -466,6 +491,12 @@ async def list_keys(ctx):
 @bot.command(name='testkey', aliases=['test', 'check'])
 async def test_key(ctx, key=None, sid=None):
     """Key'i test et - Kullanım: !testkey <key> [sid]"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
     if key is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -506,6 +537,12 @@ async def test_key(ctx, key=None, sid=None):
 @bot.command(name='keyinfo', aliases=['info'])
 async def key_info(ctx, key=None):
     """Key bilgilerini göster - Kullanım: !keyinfo <key>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
     if key is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -524,7 +561,6 @@ async def key_info(ctx, key=None):
     if result.get('status') == 'success':
         bound = result.get('bound', False)
         sid = result.get('sid')
-        status = result.get('status', 'unknown')
         
         if bound:
             embed = discord.Embed(
@@ -555,6 +591,12 @@ async def key_info(ctx, key=None):
 @bot.command(name='unbindkey', aliases=['unbind'])
 async def unbind_key(ctx, key=None):
     """Key'i SID'den ayır - Kullanım: !unbindkey <key>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
     if key is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -624,6 +666,12 @@ async def unbind_key(ctx, key=None):
 @bot.command(name='stats', aliases=['status'])
 async def show_stats(ctx):
     """Sistem istatistiklerini göster"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
     loading_msg = await ctx.send("⏳ İstatistikler getiriliyor...")
     
     result = make_api_request('stats')
@@ -671,6 +719,12 @@ async def show_stats(ctx):
 @bot.command(name='ban')
 async def ban_user(ctx, username=None):
     """Kullanıcı banla - Kullanım: !ban <username>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
     if username is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -706,6 +760,12 @@ async def ban_user(ctx, username=None):
 @bot.command(name='unban')
 async def unban_user(ctx, username=None):
     """Kullanıcı ban kaldır - Kullanım: !unban <username>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
     if username is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -741,6 +801,12 @@ async def unban_user(ctx, username=None):
 @bot.command(name='help', aliases=['yardim', 'commands'])
 async def show_help(ctx):
     """Yardım menüsü"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
     embed = discord.Embed(
         title="🤖 Keylogin SID Bot Komutları",
         description="SID (System ID) tabanlı key yönetim sistemi:",
@@ -809,6 +875,12 @@ async def show_help(ctx):
 @bot.command(name='ping')
 async def ping_command(ctx):
     """Bot gecikme süresi"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
     latency = round(bot.latency * 1000)
     
     embed = discord.Embed(
@@ -852,13 +924,6 @@ if __name__ == "__main__":
     print(f"🌐 API URL: {API_BASE_URL}")
     print("-" * 50)
     
-    if not BOT_TOKEN:
-        print("❌ HATA: DISCORD_TOKEN environment variable bulunamadı!")
-        print("📝 Railway Variables sekmesinde DISCORD_TOKEN'ı kontrol et")
-        # Railway için input() kullanma - direkt exit
-        import sys
-        sys.exit(1)
-    
     try:
         bot.run(BOT_TOKEN)
     except discord.LoginFailure:
@@ -870,4 +935,4 @@ if __name__ == "__main__":
         print(f"❌ HATA: {e}")
         print("📝 Detaylı hata bilgisi için logları kontrol et")
         import sys
-        sys.exit(1)
+        sys.exit(1) 
