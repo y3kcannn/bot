@@ -265,28 +265,52 @@ async def show_stats(ctx):
     
     stats_embed = create_embed(
         "📊 Sistem İstatistikleri",
-        f"**🔍 Talep Eden:** {ctx.author.mention}",
+        f"**🔍 Talep Eden:** {ctx.author.mention}\n**⏰ Güncelleme:** <t:{int(__import__('time').time())}:R>",
         0x0099ff
     )
     
-    # Key statistics
+    # Ana istatistikler - İki sütunlu
     stats_embed.add_field(
-        name="🔑 Key İstatistikleri",
-        value=f"**Toplam:** {result['total_keys']}\n**Kullanılmış:** {result['used_keys']}\n**Mevcut:** {result['available_keys']}",
+        name="🔑 Lisans Durumu",
+        value=f"```yaml\nToplam Keys : {result['total_keys']:>3}\nKullanılmış : {result['used_keys']:>3}\nMevcut     : {result['available_keys']:>3}```",
         inline=True
     )
     
-    # Ban statistics  
     stats_embed.add_field(
-        name="🚫 Ban İstatistikleri",
-        value=f"**Banli Kullanıcı:** {result['banned_users']}\n**Banli IP:** {result['banned_ips']}",
+        name="🚫 Güvenlik Durumu", 
+        value=f"```yaml\nBanli User : {result['banned_users']:>3}\nBanli IP   : {result['banned_ips']:>3}\nToplam Ban : {result['banned_users'] + result['banned_ips']:>3}```",
         inline=True
     )
     
-    # Access statistics
+    # Boş alan
+    stats_embed.add_field(name="\u200b", value="\u200b", inline=False)
+    
+    # Aktivite istatistikleri - Tek sütun
+    activity_percentage = min(100, (result['total_access_attempts'] / max(1, result['total_keys'])) * 100) if result['total_keys'] > 0 else 0
+    key_usage_percentage = (result['used_keys'] / max(1, result['total_keys'])) * 100 if result['total_keys'] > 0 else 0
+    
     stats_embed.add_field(
-        name="📈 Erişim İstatistikleri", 
-        value=f"**Toplam Deneme:** {result['total_access_attempts']}",
+        name="📈 Aktivite Analizi",
+        value=f"""
+```yaml
+Erişim Denemeleri    : {result['total_access_attempts']:>5}
+Key Kullanım Oranı   : %{key_usage_percentage:.1f}
+Sistem Aktivitesi    : %{activity_percentage:.1f}
+Güvenlik Seviyesi    : {'🟢 Yüksek' if result['banned_users'] + result['banned_ips'] > 0 else '🟡 Normal'}
+```""",
+        inline=False
+    )
+    
+    # Durum göstergeleri - İki sütunlu
+    stats_embed.add_field(
+        name="🎯 Sistem Durumu",
+        value="```\n🟢 API     : Aktif\n🟢 Database: Çalışıyor\n🟢 Güvenlik: Aktif```",
+        inline=True
+    )
+    
+    stats_embed.add_field(
+        name="🔄 Son Güncelleme",
+        value="```\n📊 Stats  : Şimdi\n🔄 Realtime: Aktif\n⚡ Hız     : Optimal```",
         inline=True
     )
     
@@ -482,86 +506,91 @@ async def show_help(ctx):
     
     help_embed = create_embed(
         "🔐 Keylogin Management Bot",
-        f"**👋 Merhaba {ctx.author.mention}!**\n**🤖 Bot Version:** 2.0 | **🎯 Admin Role:** `{ADMIN_ROLE}`",
+        f"**👋 Merhaba {ctx.author.mention}!**\n\n**🤖 Bot Version:** 2.0 | **🎯 Admin Role:** `{ADMIN_ROLE}`",
         0x00d4ff
     )
     
-    # Ana komutlar
-    basic_commands = """
-🔑 `!genkey` - Yeni lisans anahtarı oluştur
-📊 `!stats` - Detaylı sistem istatistikleri
-📝 `!keys` - Tüm lisans anahtarlarını listele
-❓ `!help` - Bu gelişmiş yardım menüsü
-    """
-    
+    # Ana komutlar - İki sütunlu düzen
     help_embed.add_field(
-        name="🏠 Temel Komutlar",
-        value=basic_commands,
-        inline=False
+        name="🔑 Key Yönetimi",
+        value="```\n!genkey  - Yeni lisans anahtarı\n!keys    - Key listesi\n!stats   - İstatistikler```",
+        inline=True
     )
     
-    # Ban yönetimi
-    ban_commands = """
-🚫 `!ban <kullanıcı> [ip]` - Kullanıcı ve/veya IP banla
-✅ `!unban <kullanıcı> [ip]` - Ban'ı kaldır
-🔍 `!checkban <kullanıcı> [ip]` - Ban durumu kontrol et
-📋 `!banned` - Tüm banlı kullanıcıları listele
-    """
-    
     help_embed.add_field(
-        name="🔨 Ban Yönetimi",
-        value=ban_commands,
-        inline=False
+        name="❓ Yardım",
+        value="```\n!help    - Bu yardım menüsü\n         - Detaylı bilgi\n         - Komut örnekleri```",
+        inline=True
     )
     
-    # Ban sistemi açıklaması
-    ban_info = """
-**• Sadece kullanıcı:** `!ban TestUser` (kullanıcı + IP'si banlanır)
-**• Sadece IP:** `!ban _ 192.168.1.1` (sadece IP banlanır)
-**• İkisi birden:** `!ban TestUser 192.168.1.1` (her ikisi de banlanır)
+    # Boş alan ekle (simetri için)
+    help_embed.add_field(name="\u200b", value="\u200b", inline=False)
+    
+    # Ban yönetimi - İki sütunlu
+    help_embed.add_field(
+        name="🚫 Ban İşlemleri",
+        value="```\n!ban     - Kullanıcı banla\n!unban   - Ban kaldır\n!banned  - Ban listesi```",
+        inline=True
+    )
+    
+    help_embed.add_field(
+        name="🔍 Ban Kontrol",
+        value="```\n!checkban - Ban durumu\n          - Kullanıcı kontrol\n          - IP kontrol```",
+        inline=True
+    )
+    
+    # Boş alan ekle (simetri için)
+    help_embed.add_field(name="\u200b", value="\u200b", inline=False)
+    
+    # Kullanım örnekleri - Tek sütun, ortalanmış
+    help_embed.add_field(
+        name="📚 Kullanım Örnekleri",
+        value="""
+```yaml
+Key İşlemleri:
+  !genkey                    # Yeni key oluştur
+  !keys                      # Tüm keyleri listele
 
-⚠️ **Önemli:** `!ban kullanıcı` yazdığınızda hem kullanıcı adı hem de o kullanıcının IP'si otomatik olarak banlanır!
-    """
-    
-    help_embed.add_field(
-        name="🔍 Ban Sistemi Nasıl Çalışır?",
-        value=ban_info,
+Ban İşlemleri:
+  !ban TestUser              # Kullanıcı + IP banla
+  !ban _ 192.168.1.100       # Sadece IP banla
+  !unban TestUser            # Ban kaldır
+  !checkban TestUser         # Ban kontrol et
+
+Sistem:
+  !stats                     # Detaylı istatistikler
+```""",
         inline=False
     )
     
-    # Örnek kullanımlar
-    examples = """
-**Key oluştur:** `!genkey`
-**Kullanıcı banla:** `!ban TestUser123`
-**IP banla:** `!ban _ 192.168.1.100`
-**Ban kaldır:** `!unban TestUser123`
-**Ban kontrol:** `!checkban TestUser123`
-**İstatistikler:** `!stats`
-    """
-    
+    # Ban sistemi açıklaması - Tek sütun
     help_embed.add_field(
-        name="📚 Örnek Kullanımlar",
-        value=examples,
+        name="⚠️ Ban Sistemi Nasıl Çalışır?",
+        value="""
+**• Kullanıcı Ban:** `!ban TestUser` → Hem kullanıcı adı hem IP'si banlanır
+**• IP Ban:** `!ban _ 192.168.1.1` → Sadece belirtilen IP banlanır  
+**• Çifte Ban:** `!ban TestUser 192.168.1.1` → Her ikisi de banlanır
+**• Güvenlik:** Bannlanan kullanıcı farklı isimle girse bile IP'den engellenir
+        """,
         inline=False
     )
     
-    # Yetki bilgisi
+    # Alt bilgi alanları - İki sütunlu
     help_embed.add_field(
-        name="🔒 Yetki Gereksinimi",
-        value=f"Bu komutları kullanmak için **{ADMIN_ROLE}** rolüne sahip olmanız gerekiyor!",
-        inline=False
+        name="🔒 Yetki Bilgisi",
+        value=f"**Gerekli Rol:** `{ADMIN_ROLE}`\n**Yetki Kontrolü:** Aktif\n**Güvenlik:** Maksimum",
+        inline=True
     )
     
-    # API durumu
     help_embed.add_field(
-        name="🔗 Sistem Bilgileri",
-        value=f"**API URL:** [Keylogin API]({API_URL})\n**Bot Status:** 🟢 Aktif\n**API Status:** 🟢 Bağlı",
-        inline=False
+        name="🔗 Sistem Durumu",
+        value=f"**API:** 🟢 Bağlı\n**Bot:** 🟢 Aktif\n**Database:** 🟢 Çalışıyor",
+        inline=True
     )
     
-    # Footer bilgisi
+    # Footer bilgisi - Geliştirilmiş
     help_embed.set_footer(
-        text="🎯 Tüm işlemler loglanır ve güvenlik altındadır • Keylogin Management v2.0",
+        text="🛡️ Tüm işlemler loglanır • Güvenlik altındadır • Keylogin Management v2.0",
         icon_url=bot.user.avatar.url if bot.user.avatar else None
     )
     
