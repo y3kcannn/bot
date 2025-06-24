@@ -10,15 +10,15 @@ import os
 # Bot token - Railway environment variables
 TOKEN = os.getenv('DISCORD_TOKEN') or os.getenv('BOT_TOKEN')
 
-# Debug token durumu
+# Token kontrolü
 if not TOKEN:
-    print("❌ CRITICAL: Bot token bulunamadı!")
-    print("Environment variables kontrol ediliyor...")
-    print(f"DISCORD_TOKEN: {bool(os.getenv('DISCORD_TOKEN'))}")
-    print(f"BOT_TOKEN: {bool(os.getenv('BOT_TOKEN'))}")
+    print("❌ HATA: Bot token bulunamadı!")
+    print("Railway Dashboard'da environment variable ekleyin:")
+    print("1. https://railway.app/dashboard")
+    print("2. Projenizi seçin")
+    print("3. Variables sekmesine gidin")
+    print("4. DISCORD_TOKEN = 'your_bot_token_here' ekleyin")
     exit(1)
-
-print(f"✅ Token bulundu: {TOKEN[:20]}...")  # İlk 20 karakterini göster
 
 # API ayarları
 API_URL = "https://midnightponywka.com"
