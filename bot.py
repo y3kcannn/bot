@@ -25,14 +25,18 @@ def make_api_request(action, data=None):
     """Make API request to the server"""
     try:
         url = f"{API_URL}?api=1&token={API_TOKEN}&action={action}"
+        print(f"🔗 API Request: {url}")  # Debug line
         
         if data:
+            print(f"📤 POST Data: {data}")  # Debug line
             response = requests.post(url, data=data, timeout=10)
         else:
             response = requests.get(url, timeout=10)
-            
+        
+        print(f"📥 API Response: {response.text}")  # Debug line
         return response.json()
     except Exception as e:
+        print(f"❌ API Error: {str(e)}")  # Debug line
         return {"error": f"API request failed: {str(e)}"}
 
 def has_admin_role():
