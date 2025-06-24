@@ -408,6 +408,68 @@ async def list_banned(ctx):
     
     await ctx.send(embed=banned_embed)
 
+@bot.command(name='unban')
+@has_admin_role()
+async def unban_user(ctx, username=None, ip=None):
+    """Unban a user by username and/or IP"""
+    
+    # Delete user's command message
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    if not username and not ip:
+        error_embed = create_embed(
+            "❌ Hatalı Kullanım",
+            "**Kullanım:** `!unban <kullanıcı_adı> [ip]`\n**Örnek:** `!unban TestUser 192.168.1.1`",
+            0xff0000
+        )
+        await ctx.send(embed=error_embed)
+        return
+    
+    unban_data = {}
+    if username:
+        unban_data['username'] = username
+    if ip:
+        unban_data['ip'] = ip
+    
+    # Create loading embed
+    loading_embed = create_embed(
+        "🔄 Kullanıcı Ban Kaldırılıyor...",
+        f"**👤 Kullanıcı:** {username or 'Belirtilmedi'}\n**🌐 IP:** {ip or 'Belirtilmedi'}",
+        0xffff00
+    )
+    msg = await ctx.send(embed=loading_embed)
+    
+    # Unban via API
+    result = make_api_request('unban-user', unban_data)
+    
+    if 'error' in result:
+        error_embed = create_embed(
+            "❌ Unban Hatası",
+            f"**Hata:** {result['error']}",
+            0xff0000
+        )
+        await msg.edit(embed=error_embed)
+        return
+    
+    # Success embed
+    success_embed = create_embed(
+        "✅ Kullanıcı Ban'ı Kaldırıldı",
+        f"**👤 Kullanıcı:** `{username or 'Belirtilmedi'}`\n**🌐 IP:** `{ip or 'Belirtilmedi'}`\n**👮 İşlemi Yapan:** {ctx.author.mention}",
+        0x00ff00
+    )
+    success_embed.add_field(
+        name="✅ Bilgi", 
+        value="Bu kullanıcı artık sisteme tekrar erişebilecek!", 
+        inline=False
+    )
+    await msg.edit(embed=success_embed)
+    
+    # Log to console
+    print(f"✅ User unbanned by {ctx.author}: {username} / {ip}")
+
 @bot.command(name='help')
 async def show_help(ctx):
     """Show available commands"""
@@ -419,37 +481,88 @@ async def show_help(ctx):
         pass
     
     help_embed = create_embed(
-        "🔐 Keylogin Bot Komutları",
-        f"**👋 Merhaba {ctx.author.mention}!**\nAşağıdaki komutları kullanabilirsiniz:",
+        "🔐 Keylogin Management Bot",
+        f"**👋 Merhaba {ctx.author.mention}!**\n**🤖 Bot Version:** 2.0 | **🎯 Admin Role:** `{ADMIN_ROLE}`",
         0x00d4ff
     )
     
-    commands_text = """
+    # Ana komutlar
+    basic_commands = """
 🔑 `!genkey` - Yeni lisans anahtarı oluştur
-🚫 `!ban <kullanıcı> [ip]` - Kullanıcı banla
-🔍 `!checkban <kullanıcı> [ip]` - Ban durumu kontrol et
-📊 `!stats` - Sistem istatistiklerini göster
-📝 `!keys` - Tüm key'leri listele
-🚫 `!banned` - Banli kullanıcıları listele
-❓ `!help` - Bu yardım menüsünü göster
+📊 `!stats` - Detaylı sistem istatistikleri
+📝 `!keys` - Tüm lisans anahtarlarını listele
+❓ `!help` - Bu gelişmiş yardım menüsü
     """
     
     help_embed.add_field(
-        name="📋 Mevcut Komutlar",
-        value=commands_text,
+        name="🏠 Temel Komutlar",
+        value=basic_commands,
         inline=False
     )
     
+    # Ban yönetimi
+    ban_commands = """
+🚫 `!ban <kullanıcı> [ip]` - Kullanıcı ve/veya IP banla
+✅ `!unban <kullanıcı> [ip]` - Ban'ı kaldır
+🔍 `!checkban <kullanıcı> [ip]` - Ban durumu kontrol et
+📋 `!banned` - Tüm banlı kullanıcıları listele
+    """
+    
     help_embed.add_field(
-        name="⚠️ Önemli",
+        name="🔨 Ban Yönetimi",
+        value=ban_commands,
+        inline=False
+    )
+    
+    # Ban sistemi açıklaması
+    ban_info = """
+**• Sadece kullanıcı:** `!ban TestUser` (kullanıcı + IP'si banlanır)
+**• Sadece IP:** `!ban _ 192.168.1.1` (sadece IP banlanır)
+**• İkisi birden:** `!ban TestUser 192.168.1.1` (her ikisi de banlanır)
+
+⚠️ **Önemli:** `!ban kullanıcı` yazdığınızda hem kullanıcı adı hem de o kullanıcının IP'si otomatik olarak banlanır!
+    """
+    
+    help_embed.add_field(
+        name="🔍 Ban Sistemi Nasıl Çalışır?",
+        value=ban_info,
+        inline=False
+    )
+    
+    # Örnek kullanımlar
+    examples = """
+**Key oluştur:** `!genkey`
+**Kullanıcı banla:** `!ban TestUser123`
+**IP banla:** `!ban _ 192.168.1.100`
+**Ban kaldır:** `!unban TestUser123`
+**Ban kontrol:** `!checkban TestUser123`
+**İstatistikler:** `!stats`
+    """
+    
+    help_embed.add_field(
+        name="📚 Örnek Kullanımlar",
+        value=examples,
+        inline=False
+    )
+    
+    # Yetki bilgisi
+    help_embed.add_field(
+        name="🔒 Yetki Gereksinimi",
         value=f"Bu komutları kullanmak için **{ADMIN_ROLE}** rolüne sahip olmanız gerekiyor!",
         inline=False
     )
     
+    # API durumu
     help_embed.add_field(
-        name="🔗 Bağlantılar",
-        value="**API URL:** [Keylogin API](https://midnightponywka.com/api_optimized.php)",
+        name="🔗 Sistem Bilgileri",
+        value=f"**API URL:** [Keylogin API]({API_URL})\n**Bot Status:** 🟢 Aktif\n**API Status:** 🟢 Bağlı",
         inline=False
+    )
+    
+    # Footer bilgisi
+    help_embed.set_footer(
+        text="🎯 Tüm işlemler loglanır ve güvenlik altındadır • Keylogin Management v2.0",
+        icon_url=bot.user.avatar.url if bot.user.avatar else None
     )
     
     await ctx.send(embed=help_embed)
