@@ -4,7 +4,7 @@ from discord.ext import commands
 import requests
 import json
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 # Logging setup
@@ -63,7 +63,7 @@ def create_embed(title, description=None, color=0x00ff00):
         title=title,
         description=description,
         color=color,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
     embed.set_footer(
         text="Keylogin Management System",
