@@ -365,24 +365,119 @@ async def ban_command(ctx, username=None):
 # 7. !unban <user> - Kullanıcı unban
 @bot.command(name='unban')
 async def unban_command(ctx, username=None):
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     if not username:
-        await ctx.send("❌ Kullanıcı adı belirtmelisiniz! Kullanım: `!unban <username>`")
+        embed = discord.Embed(
+            title="❌ Kullanıcı Adı Gerekli",
+            color=0xff0000,  # Kırmızı
+            description="**Kullanım:** `!unban <username>`"
+        )
+        
+        # Bot profil resmi
+        if bot.user and bot.user.avatar:
+            embed.set_thumbnail(url=bot.user.avatar.url)
+        
+        # Footer
+        embed.set_footer(
+            text="Keylogin Key Management",
+            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+        )
+        
+        message = await ctx.send(embed=embed)
+        # 10 saniye sonra sil
+        await asyncio.sleep(10)
+        try:
+            await message.delete()
+        except:
+            pass
         return
     
     result = await make_api_request("unban-user", {"username": username})
     
     if result.get("status") == "success":
-        await ctx.send(f"✅ Kullanıcı banı kaldırıldı: `{username}`")
+        embed = discord.Embed(
+            title="✅ Ban Kaldırıldı",
+            color=0x00ff00,  # Yeşil
+            description=f"**{username}** kullanıcısının banı kaldırıldı"
+        )
+        
+        # Bot profil resmi
+        if bot.user and bot.user.avatar:
+            embed.set_thumbnail(url=bot.user.avatar.url)
+        
+        # Footer
+        embed.set_footer(
+            text="Keylogin Key Management",
+            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+        )
+        
+        message = await ctx.send(embed=embed)
     else:
-        await ctx.send(f"❌ Hata: {result.get('message', 'Ban kaldırılamadı')}")
+        embed = discord.Embed(
+            title="❌ Ban Kaldırılamadı",
+            color=0xff0000,  # Kırmızı
+            description=f"**Hata:** {result.get('message', 'Ban kaldırılamadı')}"
+        )
+        
+        # Bot profil resmi
+        if bot.user and bot.user.avatar:
+            embed.set_thumbnail(url=bot.user.avatar.url)
+        
+        # Footer
+        embed.set_footer(
+            text="Keylogin Key Management",
+            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+        )
+        
+        message = await ctx.send(embed=embed)
+    
+    # 10 saniye sonra bot mesajını sil
+    await asyncio.sleep(10)
+    try:
+        await message.delete()
+    except:
+        pass
 
 # 8. (SID ban komutları kaldırıldı - !ban komutu otomatik SID banlar)
 
 # 10. !userinfo <user> - Kullanıcı durumu
 @bot.command(name='userinfo')
 async def userinfo_command(ctx, username=None):
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     if not username:
-        await ctx.send("❌ Kullanıcı adı belirtmelisiniz! Kullanım: `!userinfo <username>`")
+        embed = discord.Embed(
+            title="❌ Kullanıcı Adı Gerekli",
+            color=0xff0000,  # Kırmızı
+            description="**Kullanım:** `!userinfo <username>`"
+        )
+        
+        # Bot profil resmi
+        if bot.user and bot.user.avatar:
+            embed.set_thumbnail(url=bot.user.avatar.url)
+        
+        # Footer
+        embed.set_footer(
+            text="Keylogin Key Management",
+            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+        )
+        
+        message = await ctx.send(embed=embed)
+        # 10 saniye sonra sil
+        await asyncio.sleep(10)
+        try:
+            await message.delete()
+        except:
+            pass
         return
     
     result = await make_api_request("check-ban", {"username": username})
@@ -390,13 +485,61 @@ async def userinfo_command(ctx, username=None):
     if result.get("banned"):
         ban_type = result.get("ban_type", "unknown")
         ban_target = result.get("ban_target", "unknown")
-        await ctx.send(f"🔨 **{username}** banlandı!\n🎯 **Ban türü:** {ban_type}\n📍 **Ban hedefi:** `{ban_target}`")
+        
+        embed = discord.Embed(
+            title="🔨 Kullanıcı Banlı",
+            color=0xff0000,  # Kırmızı
+            description=f"**{username}** banlandı!"
+        )
+        embed.add_field(name="🎯 Ban Türü", value=ban_type, inline=True)
+        embed.add_field(name="📍 Ban Hedefi", value=f"`{ban_target}`", inline=True)
+        
+        # Bot profil resmi
+        if bot.user and bot.user.avatar:
+            embed.set_thumbnail(url=bot.user.avatar.url)
+        
+        # Footer
+        embed.set_footer(
+            text="Keylogin Key Management",
+            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+        )
+        
+        message = await ctx.send(embed=embed)
     else:
-        await ctx.send(f"✅ **{username}** banlı değil")
+        embed = discord.Embed(
+            title="✅ Kullanıcı Temiz",
+            color=0x00ff00,  # Yeşil
+            description=f"**{username}** banlı değil"
+        )
+        
+        # Bot profil resmi
+        if bot.user and bot.user.avatar:
+            embed.set_thumbnail(url=bot.user.avatar.url)
+        
+        # Footer
+        embed.set_footer(
+            text="Keylogin Key Management",
+            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+        )
+        
+        message = await ctx.send(embed=embed)
+    
+    # 10 saniye sonra bot mesajını sil
+    await asyncio.sleep(10)
+    try:
+        await message.delete()
+    except:
+        pass
 
 # 11. !stats - İstatistikler
 @bot.command(name='stats')
 async def stats_command(ctx):
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     result = await make_api_request("stats")
     
     if result.get("status") == "success":
@@ -407,17 +550,69 @@ async def stats_command(ctx):
         banned_sids = result.get("banned_sids", 0)
         version = result.get("version", "Unknown")
         
-        message = "📊 **SİSTEM İSTATİSTİKLERİ**\n\n"
-        message += f"🔑 **Keys:** {total_keys} toplam\n"
-        message += f"🔗 **Bağlı:** {bound_keys}\n"
-        message += f"🆓 **Boş:** {available_keys}\n\n"
-        message += f"🔨 **Banlı kullanıcı:** {banned_users}\n"
-        message += f"🚫 **Banlı SID:** {banned_sids}\n\n"
-        message += f"📱 **Versiyon:** {version}"
+        embed = discord.Embed(
+            title="📊 Sistem İstatistikleri",
+            color=0x0099ff,  # Mavi
+            description="Keylogin yönetim sistemi durumu"
+        )
         
-        await ctx.send(message)
+        # Key bilgileri
+        embed.add_field(
+            name="🔑 Key Durumu",
+            value=f"**Toplam:** {total_keys}\n**Bağlı:** {bound_keys}\n**Boş:** {available_keys}",
+            inline=True
+        )
+        
+        # Ban bilgileri
+        embed.add_field(
+            name="🔨 Ban Durumu",
+            value=f"**Kullanıcı:** {banned_users}\n**SID:** {banned_sids}",
+            inline=True
+        )
+        
+        # Sistem bilgileri
+        embed.add_field(
+            name="📱 Sistem",
+            value=f"**Versiyon:** {version}",
+            inline=True
+        )
+        
+        # Bot profil resmi
+        if bot.user and bot.user.avatar:
+            embed.set_thumbnail(url=bot.user.avatar.url)
+        
+        # Footer
+        embed.set_footer(
+            text="Keylogin Key Management",
+            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+        )
+        
+        message = await ctx.send(embed=embed)
     else:
-        await ctx.send(f"❌ Hata: {result.get('message', 'İstatistikler alınamadı')}")
+        embed = discord.Embed(
+            title="❌ İstatistik Hatası",
+            color=0xff0000,  # Kırmızı
+            description=f"**Hata:** {result.get('message', 'İstatistikler alınamadı')}"
+        )
+        
+        # Bot profil resmi
+        if bot.user and bot.user.avatar:
+            embed.set_thumbnail(url=bot.user.avatar.url)
+        
+        # Footer
+        embed.set_footer(
+            text="Keylogin Key Management",
+            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+        )
+        
+        message = await ctx.send(embed=embed)
+    
+    # 10 saniye sonra bot mesajını sil
+    await asyncio.sleep(10)
+    try:
+        await message.delete()
+    except:
+        pass
 
 # 12. !version <yeni_versiyon> - Versiyon güncelleme
 @bot.command(name='version')
