@@ -89,721 +89,375 @@ def generate_vip_key():
     segment = ''.join(random.choice(chars) for _ in range(4))
     return f"{prefix}-{segment}"
 
-# === ANA KOMUTLAR (Sadece 6 komut) ===
+# === SADE KOMUTLAR ===
 
-@bot.command(name='key', aliases=['k'])
+@bot.command(name='key')
 async def generate_key_command(ctx, key_type=None, count=None):
-    """🔑 Key üret - Kullanım: !key [type] [count]"""
-    # Kullanıcının mesajını sil
+    """🔑 Key üret"""
     try:
         await ctx.message.delete()
     except:
         pass
     
-    # Parametreleri kontrol et
+    # Parametreleri ayarla
     if count is None:
         count = 1
     else:
         try:
             count = int(count)
             if count < 1 or count > 10:
-                embed = discord.Embed(
-                    title="❌ Geçersiz Sayı",
-                    description="Key sayısı 1-10 arasında olmalı!",
-                    color=0xff0000
-                )
-                await ctx.send(embed=embed)
+                await ctx.send("❌ Key sayısı 1-10 arasında olmalı!")
                 return
         except ValueError:
-            embed = discord.Embed(
-                title="❌ Geçersiz Format",
-                description="Key sayısı rakam olmalı! (1-10)",
-                color=0xff0000
-            )
-            await ctx.send(embed=embed)
+            await ctx.send("❌ Geçersiz sayı!")
             return
     
     # Key tipini belirle
     if key_type is None or key_type.lower() == "normal":
-        key_type_name = "Normal"
         key_generator = generate_key
-        color = 0x0099ff
         emoji = "🔑"
     elif key_type.lower() in ["premium", "prem", "p"]:
-        key_type_name = "Premium"
         key_generator = generate_premium_key
-        color = 0xffd700
         emoji = "💎"
     elif key_type.lower() in ["vip", "v"]:
-        key_type_name = "VIP"
         key_generator = generate_vip_key
-        color = 0xff6600
         emoji = "👑"
     else:
-        embed = discord.Embed(
-            title="❌ Geçersiz Key Tipi",
-            description="**Kullanılabilir tipler:**\n• `normal` - Standart key\n• `premium/p` - Premium key\n• `vip/v` - VIP key",
-            color=0xff0000
-        )
-        await ctx.send(embed=embed)
+        await ctx.send("❌ Geçersiz tip! (normal, premium, vip)")
         return
     
-    # Loading mesajı
-    loading_msg = await ctx.send(f"⏳ {count} adet {key_type_name} key üretiliyor...")
+    loading_msg = await ctx.send(f"⏳ {count} key üretiliyor...")
     
-    # Key'leri üret ve sisteme ekle
+    # Key'leri üret
     generated_keys = []
-    failed_keys = []
-    
     for i in range(count):
-        # Unique key üret (10 deneme)
         for attempt in range(10):
             new_key = key_generator()
-            
-            # Key'in sistemde olup olmadığını kontrol et
             check_result = make_api_request('key-info', 'POST', {'key': new_key})
             
             if check_result.get('status') == 'error' and 'Invalid key' in check_result.get('message', ''):
-                # Key mevcut değil, kullanılabilir
                 add_result = make_api_request('add-key', 'POST', {'key': new_key})
-                
                 if add_result.get('status') == 'success':
                     generated_keys.append(new_key)
                     break
-                else:
-                    if attempt == 9:  # Son deneme
-                        failed_keys.append(f"Key eklenemedi")
-            else:
-                # Key zaten mevcut, yeni key dene
-                if attempt == 9:  # Son deneme
-                    failed_keys.append("Unique key üretilemedi")
     
     await loading_msg.delete()
     
-    # Sonuçları göster
     if generated_keys:
-        # Başarılı key'ler
-        embed = discord.Embed(
-            title=f"{emoji} {key_type_name} Key Üretimi Tamamlandı",
-            description=f"**{len(generated_keys)} adet key başarıyla üretildi!**",
-            color=color
-        )
-        
-        # Key'leri göster
-        key_list = []
-        for i, key in enumerate(generated_keys, 1):
-            key_list.append(f"`{i}.` `{key}`")
-        
-        # Key'leri sayfa sayfa göster (Discord limit)
-        keys_per_page = 8
-        if len(key_list) <= keys_per_page:
-            embed.add_field(
-                name="🔑 Üretilen Key'ler",
-                value='\n'.join(key_list),
-                inline=False
-            )
-        else:
-            # Çok key varsa ilk sayfayı göster
-            embed.add_field(
-                name="🔑 Üretilen Key'ler (İlk 8)",
-                value='\n'.join(key_list[:8]),
-                inline=False
-            )
-        
-        embed.set_footer(
-            text=f"Üreten: {ctx.author} | {datetime.datetime.now().strftime('%H:%M:%S')}", 
-            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
-        )
-        
+        embed = discord.Embed(title=f"{emoji} Key Üretildi", color=0x00ff00)
+        key_list = '\n'.join([f"`{key}`" for key in generated_keys])
+        embed.add_field(name="Keyler", value=key_list, inline=False)
         await ctx.send(embed=embed)
-    
     else:
-        # Hiç key üretilemedi
-        embed = discord.Embed(
-            title="❌ Key Üretimi Başarısız",
-            description="Hiçbir key üretilemedi! Tekrar deneyin.",
-            color=0xff0000
-        )
-        await ctx.send(embed=embed)
+        await ctx.send("❌ Key üretilemedi!")
 
-@bot.command(name='keys', aliases=['list', 'l'])
+@bot.command(name='keylist')
 async def list_keys(ctx):
-    """📋 Key listesi - SID durumu ile"""
-    # Kullanıcının mesajını sil
+    """📋 Key listesi"""
     try:
         await ctx.message.delete()
     except:
         pass
         
-    loading_msg = await ctx.send("⏳ Key'ler getiriliyor...")
-    
+    loading_msg = await ctx.send("⏳ Keyler getiriliyor...")
     result = make_api_request('list-keys')
-    
     await loading_msg.delete()
     
     if result.get('status') == 'success':
         key_details = result.get('key_details', [])
-        total_keys = result.get('total_keys', 0)
-        bound_keys = result.get('bound_keys', 0)
         
         if key_details:
-            # Key'leri sayfa sayfa göster (Discord embed limiti)
-            keys_per_page = 10
-            total_pages = (len(key_details) + keys_per_page - 1) // keys_per_page
+            embed = discord.Embed(title="📋 Key Listesi", color=0x0099ff)
             
-            for page in range(total_pages):
-                start_idx = page * keys_per_page
-                end_idx = min((page + 1) * keys_per_page, len(key_details))
-                page_keys = key_details[start_idx:end_idx]
+            key_list = []
+            for key_info in key_details:
+                key = key_info['key']
+                bound = key_info['bound']
                 
-                key_list = []
-                for key_info in page_keys:
-                    key = key_info['key']
-                    bound = key_info['bound']
-                    sid = key_info['sid']
-                    
-                    # Key tipini belirle
-                    if key.startswith('SPFR-VIP-'):
-                        key_icon = "👑"
-                    elif key.startswith('SPFR-PREM-'):
-                        key_icon = "💎"
-                    elif key.startswith('SPFR-'):
-                        key_icon = "🔑"
-                    else:
-                        key_icon = "🗝️"
-                    
-                    if bound:
-                        status_icon = "🔒"
-                        status_text = "Bağlı"
-                    else:
-                        status_icon = "🔓"
-                        status_text = "Kullanılabilir"
-                    
-                    key_list.append(f"{key_icon} `{key}` {status_icon}")
+                if key.startswith('SPFR-VIP-'):
+                    icon = "👑"
+                elif key.startswith('SPFR-PREM-'):
+                    icon = "💎"
+                else:
+                    icon = "🔑"
                 
-                embed = discord.Embed(
-                    title="📋 Key Listesi",
-                    description='\n'.join(key_list),
-                    color=0x0099ff
-                )
-                
-                # İstatistikler
-                embed.add_field(
-                    name="📊 Özet",
-                    value=f"**Toplam:** {total_keys} • **Bağlı:** {bound_keys} • **Kullanılabilir:** {total_keys - bound_keys}",
-                    inline=False
-                )
-                
-                if total_pages > 1:
-                    embed.set_footer(text=f"Sayfa {page + 1}/{total_pages} • 🔑=Normal 💎=Premium 👑=VIP")
-                
-                await ctx.send(embed=embed)
-        else:
-            embed = discord.Embed(
-                title="📋 Key Listesi",
-                description="Henüz hiç key eklenmemiş.\n\n💡 **İpucu:** `!key` komutu ile key üretebilirsin",
-                color=0xffa500
-            )
+                status = "🔒" if bound else "🔓"
+                key_list.append(f"{icon} `{key}` {status}")
+            
+            embed.description = '\n'.join(key_list)
             await ctx.send(embed=embed)
+        else:
+            await ctx.send("📋 Henüz key yok. `!key` ile üret.")
     else:
-        embed = discord.Embed(
-            title="❌ Hata",
-            description=f"Key'ler alınamadı: {result.get('message', 'Bilinmeyen hata')}",
-            color=0xff0000
-        )
-        await ctx.send(embed=embed)
+        await ctx.send(f"❌ Hata: {result.get('message', 'Bilinmeyen hata')}")
 
-@bot.command(name='manage', aliases=['m'])
-async def manage_keys(ctx, action=None, target=None):
-    """🔧 Key yönetimi - Kullanım: !manage <action> <target>"""
-    # Kullanıcının mesajını sil
+@bot.command(name='delete')
+async def delete_key(ctx, key=None):
+    """🗑️ Key sil"""
     try:
         await ctx.message.delete()
     except:
         pass
     
-    if action is None:
-        embed = discord.Embed(
-            title="🔧 Key Yönetimi",
-            description="**Kullanım:** `!manage <action> <target>`",
-            color=0x0099ff
-        )
-        embed.add_field(
-            name="📝 Eylemler",
-            value="• `delete <key>` - Key sil\n• `reset <key>` - SID sıfırla\n• `info <key>` - Key bilgileri\n• `test <key>` - Key test et",
-            inline=False
-        )
-        embed.add_field(
-            name="💡 Örnekler",
-            value="`!manage delete SPFR-1234-5678`\n`!manage reset SPFR-1234-5678`\n`!manage info SPFR-1234-5678`",
-            inline=False
-        )
-        await ctx.send(embed=embed)
+    if key is None:
+        await ctx.send("❌ Kullanım: `!delete <key>`")
         return
     
-    if target is None:
-        embed = discord.Embed(
-            title="❌ Eksik Parametre",
-            description=f"**{action}** eylemi için hedef belirtmelisin!\n\n**Örnek:** `!manage {action} SPFR-1234-5678`",
-            color=0xff0000
-        )
-        await ctx.send(embed=embed)
-        return
-    
-    action = action.lower()
-    
-    if action in ['delete', 'del', 'd']:
-        # Key silme
-        loading_msg = await ctx.send("⏳ Key siliniyor...")
-        result = make_api_request('delete-key', 'POST', {'key': target})
-        await loading_msg.delete()
-        
-        if result.get('status') == 'success':
-            embed = discord.Embed(
-                title="✅ Key Silindi",
-                description=f"**Key:** `{target}`\n**Durum:** Başarıyla silindi",
-                color=0x00ff00
-            )
-        else:
-            embed = discord.Embed(
-                title="❌ Key Silinemedi",
-                description=f"**Hata:** {result.get('message', 'Bilinmeyen hata')}",
-                color=0xff0000
-            )
-    
-    elif action in ['reset', 'unbind', 'r']:
-        # SID sıfırlama
-        loading_msg = await ctx.send("⏳ SID sıfırlanıyor...")
-        result = make_api_request('unbind-key', 'POST', {'key': target})
-        await loading_msg.delete()
-        
-        if result.get('status') == 'success':
-            embed = discord.Embed(
-                title="✅ SID Sıfırlandı",
-                description=f"**Key:** `{target}`\n**Durum:** Key tekrar kullanılabilir",
-                color=0x00ff00
-            )
-        else:
-            embed = discord.Embed(
-                title="❌ SID Sıfırlanamadı",
-                description=f"**Hata:** {result.get('message', 'Bilinmeyen hata')}",
-                color=0xff0000
-            )
-    
-    elif action in ['info', 'i']:
-        # Key bilgileri
-        loading_msg = await ctx.send("⏳ Key bilgileri getiriliyor...")
-        result = make_api_request('key-info', 'POST', {'key': target})
-        await loading_msg.delete()
-        
-        if result.get('status') == 'success':
-            bound = result.get('bound', False)
-            sid = result.get('sid')
-            key_type = result.get('type', 'Legacy')
-            
-            if bound:
-                embed = discord.Embed(
-                    title="🔒 Key Bilgileri (Bağlı)",
-                    description=f"**Key:** `{target}`\n**Tip:** {key_type}\n**SID:** `{sid[:8]}...`",
-                    color=0xff9900
-                )
-                embed.add_field(name="⚠️ Durum", value="Bu key şu anda kullanımda", inline=False)
-            else:
-                embed = discord.Embed(
-                    title="🔓 Key Bilgileri (Kullanılabilir)",
-                    description=f"**Key:** `{target}`\n**Tip:** {key_type}\n**SID:** Bağlı değil",
-                    color=0x00ff00
-                )
-                embed.add_field(name="✅ Durum", value="Bu key kullanılabilir", inline=False)
-        else:
-            embed = discord.Embed(
-                title="❌ Key Bulunamadı",
-                description=f"**Hata:** {result.get('message', 'Bilinmeyen hata')}",
-                color=0xff0000
-            )
-    
-    elif action in ['test', 't']:
-        # Key test etme
-        loading_msg = await ctx.send("⏳ Key test ediliyor...")
-        test_sid = f"test-{ctx.author.id}-{int(datetime.datetime.now().timestamp())}"
-        result = make_api_request('key-login', 'POST', {'key': target, 'sid': test_sid})
-        await loading_msg.delete()
-        
-        if result.get('authenticated') and result.get('status') == 'success':
-            embed = discord.Embed(
-                title="✅ Key Geçerli",
-                description=f"**Key:** `{target}`\n**Test SID:** `{test_sid[:12]}...`\n**Sonuç:** Başarılı ✅",
-                color=0x00ff00
-            )
-            embed.add_field(name="📝 Detay", value=result.get('message', 'Authentication successful'), inline=False)
-        else:
-            embed = discord.Embed(
-                title="❌ Key Test Başarısız",
-                description=f"**Key:** `{target}`\n**Sonuç:** Başarısız ❌",
-                color=0xff0000
-            )
-            embed.add_field(name="📝 Hata", value=result.get('message', 'Bilinmeyen hata'), inline=False)
-    
-    else:
-        embed = discord.Embed(
-            title="❌ Geçersiz Eylem",
-            description=f"**'{action}'** geçersiz bir eylem!\n\n**Geçerli eylemler:** delete, reset, info, test",
-            color=0xff0000
-        )
-    
-    embed.set_footer(text=f"İşlem yapan: {ctx.author}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
-    await ctx.send(embed=embed)
-
-@bot.command(name='ban', aliases=['b'])
-async def ban_management(ctx, action=None, target=None):
-    """🚫 Ban yönetimi - Kullanım: !ban <action> <target>"""
-    # Kullanıcının mesajını sil
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    if action is None:
-        embed = discord.Embed(
-            title="🚫 Ban Yönetimi",
-            description="**Kullanım:** `!ban <action> <target>`",
-            color=0xff0000
-        )
-        embed.add_field(
-            name="📝 Eylemler",
-            value="• `user <username>` - Kullanıcı banla\n• `unuser <username>` - Kullanıcı ban kaldır\n• `ip <ip>` - IP banla\n• `unip <ip>` - IP ban kaldır",
-            inline=False
-        )
-        embed.add_field(
-            name="💡 Örnekler",
-            value="`!ban user testuser`\n`!ban ip 192.168.1.100`\n`!ban unuser testuser`",
-            inline=False
-        )
-        await ctx.send(embed=embed)
-        return
-    
-    if target is None:
-        embed = discord.Embed(
-            title="❌ Eksik Parametre",
-            description=f"**{action}** eylemi için hedef belirtmelisin!",
-            color=0xff0000
-        )
-        await ctx.send(embed=embed)
-        return
-    
-    action = action.lower()
-    
-    if action in ['user', 'u']:
-        # Kullanıcı banlama
-        loading_msg = await ctx.send("⏳ Kullanıcı banlanıyor...")
-        result = make_api_request('ban-user', 'POST', {'username': target})
-        await loading_msg.delete()
-        
-        if result.get('status') == 'success':
-            embed = discord.Embed(
-                title="🚫 Kullanıcı Banlandı",
-                description=f"**Username:** `{target}`\n**Durum:** Banlandı",
-                color=0xff0000
-            )
-            embed.add_field(name="📝 Not", value="Bu kullanıcı artık uygulamayı kullanamayacak", inline=False)
-        else:
-            embed = discord.Embed(
-                title="❌ Hata",
-                description=f"Kullanıcı banlanamadı: {result.get('message', 'Bilinmeyen hata')}",
-                color=0xff0000
-            )
-    
-    elif action in ['unuser', 'uu']:
-        # Kullanıcı ban kaldırma
-        loading_msg = await ctx.send("⏳ Ban kaldırılıyor...")
-        result = make_api_request('unban-user', 'POST', {'username': target})
-        await loading_msg.delete()
-        
-        if result.get('status') == 'success':
-            embed = discord.Embed(
-                title="✅ Ban Kaldırıldı",
-                description=f"**Username:** `{target}`\n**Durum:** Ban kaldırıldı",
-                color=0x00ff00
-            )
-            embed.add_field(name="📝 Not", value="Bu kullanıcı artık uygulamayı kullanabilir", inline=False)
-        else:
-            embed = discord.Embed(
-                title="❌ Hata",
-                description=f"Ban kaldırılamadı: {result.get('message', 'Bilinmeyen hata')}",
-                color=0xff0000
-            )
-    
-    elif action in ['ip']:
-        # IP banlama
-        loading_msg = await ctx.send("⏳ IP banlanıyor...")
-        result = make_api_request('ban-ip', 'POST', {'ip': target})
-        await loading_msg.delete()
-        
-        if result.get('status') == 'success':
-            embed = discord.Embed(
-                title="🚫 IP Banlandı",
-                description=f"**IP:** `{target}`\n**Durum:** Banlandı",
-                color=0xff0000
-            )
-            embed.add_field(name="📝 Not", value="Bu IP adresi artık API'ye erişemeyecek", inline=False)
-        else:
-            embed = discord.Embed(
-                title="❌ Hata",
-                description=f"IP banlanamadı: {result.get('message', 'Bilinmeyen hata')}",
-                color=0xff0000
-            )
-    
-    elif action in ['unip']:
-        # IP ban kaldırma
-        loading_msg = await ctx.send("⏳ IP ban kaldırılıyor...")
-        result = make_api_request('unban-ip', 'POST', {'ip': target})
-        await loading_msg.delete()
-        
-        if result.get('status') == 'success':
-            embed = discord.Embed(
-                title="✅ IP Ban Kaldırıldı",
-                description=f"**IP:** `{target}`\n**Durum:** Ban kaldırıldı",
-                color=0x00ff00
-            )
-            embed.add_field(name="📝 Not", value="Bu IP adresi artık API'ye erişebilir", inline=False)
-        else:
-            embed = discord.Embed(
-                title="❌ Hata",
-                description=f"IP ban kaldırılamadı: {result.get('message', 'Bilinmeyen hata')}",
-                color=0xff0000
-            )
-    
-    else:
-        embed = discord.Embed(
-            title="❌ Geçersiz Eylem",
-            description=f"**'{action}'** geçersiz bir eylem!\n\n**Geçerli eylemler:** user, unuser, ip, unip",
-            color=0xff0000
-        )
-    
-    embed.set_footer(text=f"İşlem yapan: {ctx.author}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
-    await ctx.send(embed=embed)
-
-@bot.command(name='stats', aliases=['s'])
-async def show_stats(ctx):
-    """📊 Sistem istatistikleri"""
-    # Kullanıcının mesajını sil
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-        
-    loading_msg = await ctx.send("⏳ İstatistikler getiriliyor...")
-    
-    result = make_api_request('stats')
-    
+    loading_msg = await ctx.send("⏳ Key siliniyor...")
+    result = make_api_request('delete-key', 'POST', {'key': key})
     await loading_msg.delete()
     
-    if result.get('status') in ['success', 'online']:
-        embed = discord.Embed(
-            title="📊 Keylogin Sistem İstatistikleri",
-            color=0x0099ff
-        )
-        
-        # Ana istatistikler
-        total_keys = result.get('total_keys', 0)
-        bound_keys = result.get('bound_keys', 0)
-        available_keys = result.get('available_keys', 0)
-        
-        embed.add_field(name="🔑 Toplam Key", value=f"**{total_keys}**", inline=True)
-        embed.add_field(name="🔒 Bağlı Key", value=f"**{bound_keys}**", inline=True)
-        embed.add_field(name="🔓 Kullanılabilir", value=f"**{available_keys}**", inline=True)
-        
-        # Kullanım oranı
-        if total_keys > 0:
-            usage_percent = round((bound_keys / total_keys) * 100, 1)
-            embed.add_field(name="📈 Kullanım", value=f"**%{usage_percent}**", inline=True)
-        
-        embed.add_field(name="🚫 Banned User", value=f"**{result.get('banned_users', 0)}**", inline=True)
-        embed.add_field(name="🔒 Banned IP", value=f"**{result.get('banned_ips', 0)}**", inline=True)
-        
-        # Sunucu bilgileri
-        embed.add_field(name="🟢 Status", value=f"**{result.get('status', 'N/A').upper()}**", inline=True)
-        embed.add_field(name="📦 Version", value=f"**{result.get('version', 'N/A')}**", inline=True)
-        embed.add_field(name="🌐 Server", value="**midnightponywka.com**", inline=True)
-        
-        embed.set_footer(text=f"Son güncelleme: {datetime.datetime.now().strftime('%H:%M:%S')}")
+    if result.get('status') == 'success':
+        await ctx.send(f"✅ Key silindi: `{key}`")
     else:
-        embed = discord.Embed(
-            title="❌ Hata",
-            description=f"İstatistikler alınamadı: {result.get('message', 'Bilinmeyen hata')}",
-            color=0xff0000
-        )
-    
-    await ctx.send(embed=embed)
+        await ctx.send(f"❌ Silinemedi: {result.get('message', 'Hata')}")
 
-@bot.command(name='help', aliases=['h'])
-async def show_help(ctx):
-    """❓ Yardım menüsü"""
-    # Kullanıcının mesajını sil
+@bot.command(name='reset')
+async def reset_key(ctx, key=None):
+    """🔄 Key sıfırla"""
     try:
         await ctx.message.delete()
     except:
         pass
-        
-    embed = discord.Embed(
-        title="🤖 Keylogin Bot Komutları",
-        description="**Tüm komutlar ve kullanımları**",
-        color=0x0099ff
-    )
     
-    # Key İşlemleri
-    embed.add_field(
-        name="🔑 Key İşlemleri",
-        value="`!key [type] [count]` - Key üret\n"
-              "• `!key` - 1 normal key\n"
-              "• `!key premium 3` - 3 premium key\n" 
-              "• `!key vip 5` - 5 VIP key\n"
-              "• `!key p 2` - 2 premium (kısaltma)\n"
-              "• `!key v 1` - 1 VIP (kısaltma)\n\n"
-              "`!keys` - Key listesi (SID durumu ile)\n"
-              "• Aliases: `!list`, `!l`",
-        inline=False
-    )
+    if key is None:
+        await ctx.send("❌ Kullanım: `!reset <key>`")
+        return
     
-    # Key Yönetimi
-    embed.add_field(
-        name="🔧 Key Yönetimi",
-        value="`!manage <action> <target>` - Key yönetimi\n"
-              "• `!manage delete SPFR-1234-5678` - Key sil\n"
-              "• `!manage reset SPFR-1234-5678` - SID sıfırla\n"
-              "• `!manage info SPFR-1234-5678` - Key bilgileri\n"
-              "• `!manage test SPFR-1234-5678` - Key test et\n"
-              "• Aliases: `!m`, kısaltmalar: `del`, `r`, `i`, `t`",
-        inline=False
-    )
+    loading_msg = await ctx.send("⏳ Key sıfırlanıyor...")
+    result = make_api_request('unbind-key', 'POST', {'key': key})
+    await loading_msg.delete()
     
-    # Ban Yönetimi
-    embed.add_field(
-        name="🚫 Ban İşlemleri",
-        value="`!ban <action> <target>` - Ban yönetimi\n"
-              "• `!ban user testuser` - Kullanıcı banla\n"
-              "• `!ban unuser testuser` - Kullanıcı ban kaldır\n"
-              "• `!ban ip 192.168.1.100` - IP banla\n"
-              "• `!ban unip 192.168.1.100` - IP ban kaldır\n"
-              "• Aliases: `!b`, kısaltmalar: `u`, `uu`\n\n"
-              "`!checkban <username>` - Real-time ban kontrolü\n"
-              "• Aliases: `!cb`",
-        inline=False
-    )
-    
-    # Sistem
-    embed.add_field(
-        name="📊 Sistem Komutları",
-        value="`!stats` - Sistem istatistikleri\n"
-              "• Key sayıları, ban durumları, sunucu bilgileri\n"
-              "• Aliases: `!s`\n\n"
-              "`!help` - Bu yardım menüsü\n"
-              "• Aliases: `!h`",
-        inline=False
-    )
-    
-    # Key Formatları
-    embed.add_field(
-        name="🎨 Key Formatları",
-        value="• **Normal:** `SPFR-XXXX-XXXX` 🔑\n"
-              "• **Premium:** `SPFR-PREM-XXXX` 💎\n"
-              "• **VIP:** `SPFR-VIP-XXXX` 👑",
-        inline=False
-    )
-    
-    # Hızlı Komutlar
-    embed.add_field(
-        name="⚡ Hızlı Komutlar",
-        value="`!k p 3` = 3 premium key üret\n"
-              "`!l` = Key listesi\n"
-              "`!m del SPFR-1234-5678` = Key sil\n"
-              "`!b u testuser` = Kullanıcı banla\n"
-              "`!cb testuser` = Ban kontrolü\n"
-              "`!s` = İstatistikler",
-        inline=False
-    )
-    
-    embed.set_footer(text="Keylogin Management Bot | 6 Ana Komut + Real-time Ban Kontrolü")
-    embed.set_thumbnail(url=bot.user.avatar.url if bot.user.avatar else None)
-    
-    await ctx.send(embed=embed)
+    if result.get('status') == 'success':
+        await ctx.send(f"✅ Key sıfırlandı: `{key}`")
+    else:
+        await ctx.send(f"❌ Sıfırlanamadı: {result.get('message', 'Hata')}")
 
-@bot.command(name='checkban', aliases=['cb'])
-async def check_ban_status(ctx, username=None):
-    """🔍 Real-time ban kontrolü - Kullanım: !checkban <username>"""
-    # Kullanıcının mesajını sil
+@bot.command(name='keyinfo')
+async def key_info(ctx, key=None):
+    """ℹ️ Key bilgisi"""
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    if key is None:
+        await ctx.send("❌ Kullanım: `!keyinfo <key>`")
+        return
+    
+    loading_msg = await ctx.send("⏳ Bilgi getiriliyor...")
+    result = make_api_request('key-info', 'POST', {'key': key})
+    await loading_msg.delete()
+    
+    if result.get('status') == 'success':
+        bound = result.get('bound', False)
+        key_type = result.get('type', 'Legacy')
+        
+        if bound:
+            sid = result.get('sid', '')
+            embed = discord.Embed(title=f"🔒 {key}", color=0xff9900)
+            embed.add_field(name="Durum", value="Bağlı", inline=True)
+            embed.add_field(name="Tip", value=key_type, inline=True)
+            embed.add_field(name="SID", value=f"`{sid[:8]}...`", inline=True)
+        else:
+            embed = discord.Embed(title=f"🔓 {key}", color=0x00ff00)
+            embed.add_field(name="Durum", value="Kullanılabilir", inline=True)
+            embed.add_field(name="Tip", value=key_type, inline=True)
+        
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send(f"❌ Key bulunamadı: {result.get('message', 'Hata')}")
+
+@bot.command(name='ban')
+async def ban_user(ctx, username=None):
+    """🚫 Kullanıcı banla"""
     try:
         await ctx.message.delete()
     except:
         pass
     
     if username is None:
-        embed = discord.Embed(
-            title="❌ Eksik Parametre",
-            description="**Kullanım:** `!checkban <username>`\n**Örnek:** `!checkban testuser`",
-            color=0xff0000
-        )
-        await ctx.send(embed=embed)
+        await ctx.send("❌ Kullanım: `!ban <username>`")
         return
     
-    loading_msg = await ctx.send("⏳ Ban durumu kontrol ediliyor...")
-    
-    result = make_api_request('check-ban', 'POST', {'username': username})
-    
+    loading_msg = await ctx.send("⏳ Banlıyor...")
+    result = make_api_request('ban-user', 'POST', {'username': username})
     await loading_msg.delete()
     
     if result.get('status') == 'success':
-        embed = discord.Embed(
-            title="✅ Kullanıcı Temiz",
-            description=f"**Username:** `{username}`\n**Durum:** Banlanmamış",
-            color=0x00ff00
-        )
-        embed.add_field(name="📝 Bilgi", value="Bu kullanıcı sistemde banlı değil", inline=False)
+        await ctx.send(f"🚫 Banlandı: `{username}`")
+    else:
+        await ctx.send(f"❌ Banlanamadı: {result.get('message', 'Hata')}")
+
+@bot.command(name='unban')
+async def unban_user(ctx, username=None):
+    """✅ Ban kaldır"""
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    if username is None:
+        await ctx.send("❌ Kullanım: `!unban <username>`")
+        return
+    
+    loading_msg = await ctx.send("⏳ Ban kaldırılıyor...")
+    result = make_api_request('unban-user', 'POST', {'username': username})
+    await loading_msg.delete()
+    
+    if result.get('status') == 'success':
+        await ctx.send(f"✅ Ban kaldırıldı: `{username}`")
+    else:
+        await ctx.send(f"❌ Kaldırılamadı: {result.get('message', 'Hata')}")
+
+@bot.command(name='banip')
+async def ban_ip(ctx, ip=None):
+    """🚫 IP banla"""
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    if ip is None:
+        await ctx.send("❌ Kullanım: `!banip <ip>`")
+        return
+    
+    loading_msg = await ctx.send("⏳ IP banlıyor...")
+    result = make_api_request('ban-ip', 'POST', {'ip': ip})
+    await loading_msg.delete()
+    
+    if result.get('status') == 'success':
+        await ctx.send(f"🚫 IP banlandı: `{ip}`")
+    else:
+        await ctx.send(f"❌ IP banlanamadı: {result.get('message', 'Hata')}")
+
+@bot.command(name='unbanip')
+async def unban_ip(ctx, ip=None):
+    """✅ IP ban kaldır"""
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    if ip is None:
+        await ctx.send("❌ Kullanım: `!unbanip <ip>`")
+        return
+    
+    loading_msg = await ctx.send("⏳ IP ban kaldırılıyor...")
+    result = make_api_request('unban-ip', 'POST', {'ip': ip})
+    await loading_msg.delete()
+    
+    if result.get('status') == 'success':
+        await ctx.send(f"✅ IP ban kaldırıldı: `{ip}`")
+    else:
+        await ctx.send(f"❌ IP ban kaldırılamadı: {result.get('message', 'Hata')}")
+
+@bot.command(name='userinfo')
+async def user_info(ctx, username=None):
+    """👤 Kullanıcı bilgisi"""
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    if username is None:
+        await ctx.send("❌ Kullanım: `!userinfo <username>`")
+        return
+    
+    loading_msg = await ctx.send("⏳ Kontrol ediliyor...")
+    result = make_api_request('check-ban', 'POST', {'username': username})
+    await loading_msg.delete()
+    
+    if result.get('status') == 'success':
+        embed = discord.Embed(title=f"👤 {username}", color=0x00ff00)
+        embed.add_field(name="Durum", value="✅ Temiz", inline=False)
+        await ctx.send(embed=embed)
     elif result.get('status') == 'banned':
         ban_type = result.get('ban_type', 'unknown')
-        ban_target = result.get('ban_target', 'unknown')
-        
-        embed = discord.Embed(
-            title="🚫 Kullanıcı Banlı",
-            description=f"**Username:** `{username}`\n**Durum:** Banlanmış",
-            color=0xff0000
-        )
-        embed.add_field(name="📝 Ban Detayı", value=f"**Tip:** {ban_type.upper()}\n**Hedef:** `{ban_target}`", inline=False)
-        embed.add_field(name="⚠️ Uyarı", value="Bu kullanıcı sistemde aktif olarak banlı", inline=False)
+        embed = discord.Embed(title=f"👤 {username}", color=0xff0000)
+        embed.add_field(name="Durum", value=f"🚫 Banlı ({ban_type})", inline=False)
+        await ctx.send(embed=embed)
     else:
-        embed = discord.Embed(
-            title="❌ Kontrol Başarısız",
-            description=f"**Hata:** {result.get('message', 'Bilinmeyen hata')}",
-            color=0xff0000
-        )
+        await ctx.send(f"❌ Kontrol edilemedi: {result.get('message', 'Hata')}")
+
+@bot.command(name='stats')
+async def show_stats(ctx):
+    """📊 İstatistikler"""
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
+    loading_msg = await ctx.send("⏳ İstatistikler...")
+    result = make_api_request('stats')
+    await loading_msg.delete()
     
-    embed.set_footer(text=f"Kontrol eden: {ctx.author}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+    if result.get('status') in ['success', 'online']:
+        embed = discord.Embed(title="📊 İstatistikler", color=0x0099ff)
+        
+        total_keys = result.get('total_keys', 0)
+        bound_keys = result.get('bound_keys', 0)
+        
+        embed.add_field(name="🔑 Toplam", value=str(total_keys), inline=True)
+        embed.add_field(name="🔒 Bağlı", value=str(bound_keys), inline=True)
+        embed.add_field(name="🔓 Boş", value=str(total_keys - bound_keys), inline=True)
+        embed.add_field(name="🚫 Banned", value=str(result.get('banned_users', 0)), inline=True)
+        embed.add_field(name="🌐 Status", value=result.get('status', 'N/A').upper(), inline=True)
+        embed.add_field(name="📦 Version", value=result.get('version', 'N/A'), inline=True)
+        
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send(f"❌ İstatistik alınamadı: {result.get('message', 'Hata')}")
+
+@bot.command(name='help')
+async def show_help(ctx):
+    """❓ Yardım"""
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
+    embed = discord.Embed(title="🤖 Bot Komutları", color=0x0099ff)
+    
+    embed.add_field(
+        name="🔑 Key İşlemleri",
+        value="`!key [tip] [sayı]` - Key üret\n"
+              "`!keylist` - Key listesi\n"
+              "`!delete <key>` - Key sil\n"
+              "`!reset <key>` - Key sıfırla\n"
+              "`!keyinfo <key>` - Key bilgisi",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🚫 Ban İşlemleri",
+        value="`!ban <user>` - Kullanıcı banla\n"
+              "`!unban <user>` - Ban kaldır\n"
+              "`!banip <ip>` - IP banla\n"
+              "`!unbanip <ip>` - IP ban kaldır\n"
+              "`!userinfo <user>` - Kullanıcı kontrol",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="📊 Sistem",
+        value="`!stats` - İstatistikler\n"
+              "`!help` - Bu yardım",
+        inline=False
+    )
+    
+    embed.set_footer(text="Keylogin Bot | Sade ve Basit")
     await ctx.send(embed=embed)
 
 # Hata yakalama
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
-        embed = discord.Embed(
-            title="❌ Bilinmeyen Komut",
-            description=f"**'{ctx.message.content.split()[0]}'** komutu bulunamadı.\n\n`!help` ile komutları görebilirsin.",
-            color=0xff0000
-        )
-        await ctx.send(embed=embed)
+        await ctx.send(f"❌ `{ctx.message.content.split()[0]}` komutu bulunamadı. `!help` yaz.")
     elif isinstance(error, commands.MissingRequiredArgument):
-        embed = discord.Embed(
-            title="❌ Eksik Parametre",
-            description=f"Bu komut için gerekli parametreler eksik.\n\n`!help` ile yardım alabilirsin.",
-            color=0xff0000
-        )
-        await ctx.send(embed=embed)
+        await ctx.send("❌ Eksik parametre. `!help` ile kontrol et.")
     else:
-        embed = discord.Embed(
-            title="❌ Beklenmeyen Hata",
-            description=f"Bir hata oluştu: {str(error)}",
-            color=0xff0000
-        )
-        await ctx.send(embed=embed)
+        await ctx.send(f"❌ Hata: {str(error)}")
         print(f"Error: {error}")
 
 # Ana çalıştırma
