@@ -7,8 +7,8 @@ import random
 import string
 import os
 
-# Bot token
-TOKEN = os.getenv('BOT_TOKEN') or 'YOUR_BOT_TOKEN_HERE'
+# Bot token - Railway environment variables
+TOKEN = os.getenv('DISCORD_TOKEN') or os.getenv('BOT_TOKEN') or 'YOUR_BOT_TOKEN_HERE'
 
 # API ayarları
 API_URL = "https://midnightponywka.com"
@@ -336,4 +336,18 @@ async def help_command(ctx):
 
 # Bot'u çalıştır
 if __name__ == "__main__":
-    bot.run(TOKEN)
+    if TOKEN == 'YOUR_BOT_TOKEN_HERE':
+        print("❌ HATA: Bot token bulunamadı!")
+        print("Railway'de DISCORD_TOKEN veya BOT_TOKEN environment variable'ını ayarlayın.")
+        exit(1)
+    
+    print("🚀 Keylogin Discord Bot Starting...")
+    print(f"🔑 Token Status: {'✅ Found' if TOKEN else '❌ Missing'}")
+    print(f"🌐 API URL: {API_URL}")
+    print("-" * 50)
+    
+    try:
+        bot.run(TOKEN)
+    except Exception as e:
+        print(f"❌ HATA: {e}")
+        exit(1)
