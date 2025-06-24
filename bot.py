@@ -436,6 +436,80 @@ async def update_version(ctx, new_version=None):
     
     asyncio.create_task(auto_delete_message(msg))
 
+@bot.command(name='license')
+@has_admin_role()
+async def check_license(ctx, key=None):
+    """Check license status for a specific key"""
+    await safe_delete_user_message(ctx)
+    
+    if not key:
+        error_embed = create_embed(
+            "❌ Hatalı Kullanım",
+            "**Kullanım:** `!license <key>`\n**Örnek:** `!license ABC123DEF456`",
+            0xff0000
+        )
+        msg = await ctx.send(embed=error_embed)
+        asyncio.create_task(auto_delete_message(msg))
+        return
+    
+    # Check license via API
+    result = make_api_request('check-license', {'key': key})
+    
+    if 'error' in result:
+        error_embed = create_embed(
+            "❌ License Kontrol Hatası",
+            f"**Hata:** {result['error']}",
+            0xff0000
+        )
+        msg = await ctx.send(embed=error_embed)
+    else:
+        # Display license status
+        status = result.get('status', 'unknown')
+        
+        if status == 'unused':
+            license_embed = create_embed(
+                "🔑 License Durumu: UNUSED",
+                f"**🔐 Key:** `{key[:8]}...`\n**📊 Durum:** Kullanılmamış\n**🔍 Kontrol Eden:** {ctx.author.mention}",
+                0xffaa00
+            )
+            license_embed.add_field(
+                name="ℹ️ Bilgi",
+                value="Bu key henüz aktive edilmemiş.",
+                inline=False
+            )
+        elif status == 'expired':
+            license_embed = create_embed(
+                "❌ License Durumu: EXPIRED",
+                f"**🔐 Key:** `{key[:8]}...`\n**📊 Durum:** Süresi Dolmuş\n**⏰ Bitiş:** `{result.get('license_expiry', 'N/A')}`\n**🔍 Kontrol Eden:** {ctx.author.mention}",
+                0xff0000
+            )
+            license_embed.add_field(
+                name="⚠️ Uyarı",
+                value="Bu lisans artık geçerli değil!",
+                inline=False
+            )
+        elif status == 'active':
+            license_embed = create_embed(
+                "✅ License Durumu: ACTIVE",
+                f"**🔐 Key:** `{key[:8]}...`\n**👤 Kullanıcı:** `{result.get('username', 'N/A')}`\n**⏰ Bitiş:** `{result.get('license_expiry', 'N/A')}`\n**⏱️ Kalan Süre:** `{result.get('remaining_time', 'N/A')}`\n**🔍 Kontrol Eden:** {ctx.author.mention}",
+                0x00ff00
+            )
+            license_embed.add_field(
+                name="📊 Detaylar",
+                value=f"**İlk Kullanım:** {result.get('first_use', 'N/A')}",
+                inline=False
+            )
+        else:
+            license_embed = create_embed(
+                "❓ License Durumu: UNKNOWN",
+                f"**🔐 Key:** `{key[:8]}...`\n**📊 Durum:** Bilinmeyen\n**🔍 Kontrol Eden:** {ctx.author.mention}",
+                0x888888
+            )
+        
+        msg = await ctx.send(embed=license_embed)
+    
+    asyncio.create_task(auto_delete_message(msg))
+
 @bot.command(name='help')
 async def show_help(ctx):
     """Show available commands"""
@@ -450,7 +524,13 @@ async def show_help(ctx):
     # Command fields
     help_embed.add_field(
         name="🔑 Key Management",
-        value="`!genkey` - Yeni lisans anahtarı oluştur\n`!version [ver]` - Version görüntüle/güncelle\n`!stats` - Detaylı sistem istatistikleri",
+        value="`!genkey` - Yeni lisans anahtarı oluştur\n`!license <key>` - License durumu kontrol et\n`!version [ver]` - Version görüntüle/güncelle",
+        inline=True
+    )
+    
+    help_embed.add_field(
+        name="📊 System Info",
+        value="`!stats` - Detaylı sistem istatistikleri\n`!help` - Bu yardım menüsünü göster",
         inline=True
     )
     
