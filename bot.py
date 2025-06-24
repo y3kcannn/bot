@@ -217,38 +217,30 @@ async def keylist_command(ctx):
         
         if vip_keys:
             message += "👑 **VIP Keys:**\n"
-            for key in vip_keys[:5]:  # İlk 5'ini göster
+            for key in vip_keys:  # Tüm VIP key'leri göster
                 status = "🔗 Bağlı" if key.get("bound") else "🆓 Boş"
                 message += f"`{key['key']}` - {status}\n"
-            if len(vip_keys) > 5:
-                message += f"... ve {len(vip_keys) - 5} tane daha\n"
             message += "\n"
             
         if premium_keys:
             message += "💎 **Premium Keys:**\n"
-            for key in premium_keys[:5]:
+            for key in premium_keys:  # Tüm Premium key'leri göster
                 status = "🔗 Bağlı" if key.get("bound") else "🆓 Boş"
                 message += f"`{key['key']}` - {status}\n"
-            if len(premium_keys) > 5:
-                message += f"... ve {len(premium_keys) - 5} tane daha\n"
             message += "\n"
             
         if normal_keys:
             message += "🔑 **Normal Keys:**\n"
-            for key in normal_keys[:5]:
+            for key in normal_keys:  # Tüm Normal key'leri göster
                 status = "🔗 Bağlı" if key.get("bound") else "🆓 Boş"
                 message += f"`{key['key']}` - {status}\n"
-            if len(normal_keys) > 5:
-                message += f"... ve {len(normal_keys) - 5} tane daha\n"
             message += "\n"
             
         if legacy_keys:
             message += "📜 **Legacy Keys:**\n"
-            for key in legacy_keys[:3]:
+            for key in legacy_keys:  # Tüm Legacy key'leri göster
                 status = "🔗 Bağlı" if key.get("bound") else "🆓 Boş"
                 message += f"`{key['key']}` - {status}\n"
-            if len(legacy_keys) > 3:
-                message += f"... ve {len(legacy_keys) - 3} tane daha\n"
             message += "\n"
         
         # İstatistikler
@@ -258,33 +250,34 @@ async def keylist_command(ctx):
         
         message += f"📊 **Toplam:** {total} | **Bağlı:** {bound} | **Boş:** {available}"
         
-        embed = discord.Embed(
-            title="📝 Key Listesi",
-            color=0x0099ff,  # Mavi
-            description=message[:1900]  # Embed için kısalt
-        )
-        
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        bot_message = await ctx.send(embed=embed)
-        await asyncio.sleep(10)
-        try:
-            await bot_message.delete()
-        except:
-            pass
+        # Mesaj 2000 karakterden uzunsa parçalara böl
+        if len(message) <= 2000:
+            await ctx.send(message)
+        else:
+            # Mesajı parçalara böl
+            parts = []
+            current_part = ""
+            lines = message.split('\n')
+            
+            for line in lines:
+                if len(current_part + line + '\n') <= 1900:  # Biraz margin bırak
+                    current_part += line + '\n'
+                else:
+                    if current_part:
+                        parts.append(current_part.strip())
+                    current_part = line + '\n'
+            
+            if current_part:
+                parts.append(current_part.strip())
+            
+            # Her parçayı gönder
+            for i, part in enumerate(parts):
+                if i == 0:
+                    await ctx.send(part)
+                else:
+                    await ctx.send(f"**Devamı (Sayfa {i+1}):**\n\n{part}")
     else:
-        message = await ctx.send(f"❌ Hata: {result.get('message', 'Bilinmeyen hata')}")
-        await asyncio.sleep(10)
-        try:
-            await message.delete()
-        except:
-            pass
+        await ctx.send(f"❌ Hata: {result.get('message', 'Bilinmeyen hata')}")
 
 # 3. !delete <key> - Key silme
 @bot.command(name='delete')
@@ -302,33 +295,9 @@ async def delete_command(ctx, key=None):
     result = await make_api_request("delete-key", {"key": key})
     
     if result.get("status") == "success":
-        embed = discord.Embed(
-            title="🗑️ Key Silindi",
-            color=0xff6b6b,  # Kırmızı
-            description=f"**Key başarıyla silindi**\n\n`{key}`"
-        )
-        
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        message = await ctx.send(embed=embed)
-        await asyncio.sleep(10)
-        try:
-            await message.delete()
-        except:
-            pass
+        await ctx.send(f"✅ Key silindi: `{key}`")
     else:
-        message = await ctx.send(f"❌ Hata: {result.get('message', 'Key silinemedi')}")
-        await asyncio.sleep(10)
-        try:
-            await message.delete()
-        except:
-            pass
+        await ctx.send(f"❌ Hata: {result.get('message', 'Key silinemedi')}")
 
 # 4. !reset <key> - Key SID reset
 @bot.command(name='reset')
@@ -340,33 +309,9 @@ async def reset_command(ctx, key=None):
     result = await make_api_request("unbind-key", {"key": key})
     
     if result.get("status") == "success":
-        embed = discord.Embed(
-            title="🔄 Key SID Reset",
-            color=0xffa500,  # Turuncu
-            description=f"**Key SID'i başarıyla resetlendi**\n\n`{key}`"
-        )
-        
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        message = await ctx.send(embed=embed)
-        await asyncio.sleep(10)
-        try:
-            await message.delete()
-        except:
-            pass
+        await ctx.send(f"✅ Key SID'i resetlendi: `{key}`")
     else:
-        message = await ctx.send(f"❌ Hata: {result.get('message', 'SID resetlenemedi')}")
-        await asyncio.sleep(10)
-        try:
-            await message.delete()
-        except:
-            pass
+        await ctx.send(f"❌ Hata: {result.get('message', 'SID resetlenemedi')}")
 
 # 5. !keyinfo <key> - Key bilgisi
 @bot.command(name='keyinfo')
