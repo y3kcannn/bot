@@ -679,20 +679,20 @@ async def show_help(ctx):
     
     help_embed = create_embed(
         "🎯 MIDNIGHT KEYLOGIN BOT",
-        "**Available Commands & Usage Guide**",
+        "**Komut Rehberi & Kullanım Kılavuzu**\n`< >` = zorunlu parametre • `[ ]` = opsiyonel parametre",
         0x7289DA
     )
     
     # İki sütunlu layout
     help_embed.add_field(
         name="🔑 Key Management",
-        value="`!genkey` - Generate new access key\n`!keys` - List all keys\n`!cleanup` - Clean expired keys",
+        value="`!genkey` - Yeni lisans anahtarı oluştur\n`!keys` - Tüm key'leri listele (ilk 10)\n`!cleanup` - Süresi dolmuş key'leri temizle",
         inline=True
     )
     
     help_embed.add_field(
         name="⚡ Quick Actions",
-        value="`!stats` - Show system statistics\n`!version` - Version control/update\n`!help` - Show this help menu",
+        value="`!stats` - Detaylı sistem istatistikleri\n`!version [ver]` - Version görüntüle/güncelle\n`!help` - Bu yardım menüsünü göster",
         inline=True
     )
     
@@ -701,19 +701,19 @@ async def show_help(ctx):
     
     help_embed.add_field(
         name="🚫 Ban System",
-        value="`!ban <user>` - Ban username + IP\n`!ban _ <ip>` - Ban only IP\n`!unban <user>` - Unban user",
+        value="`!ban <kullanıcı> [ip]` - Kullanıcı ve IP banla\n`!ban _ <ip>` - Sadece IP banla\n`!unban <kullanıcı> [ip]` - Ban'ı kaldır",
         inline=True
     )
     
     help_embed.add_field(
         name="📊 Information",
-        value="`!checkban <user>` - Check ban status\n`!banned` - List banned users",
+        value="`!checkban <kullanıcı>` - Ban durumunu kontrol et\n`!banned` - Banli kullanıcıları listele",
         inline=True
     )
     
     # Footer
     help_embed.set_footer(
-        text=f"🎮 MIDNIGHT PONYWKA | Requested by {ctx.author.display_name}",
+        text=f"🎮 MIDNIGHT PONYWKA | Tüm mesajlar 6 saniye sonra silinir | {ctx.author.display_name}",
         icon_url=bot.user.avatar.url if bot.user.avatar else None
     )
     
