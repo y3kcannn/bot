@@ -71,23 +71,39 @@ async def key_command(ctx, key_type="normal", count=1):
             await ctx.send("❌ Key sayısı 1-10 arasında olmalı!")
             return
             
-        # Tip kontrolü
-        if key_type.lower() not in ["normal", "premium", "prem", "vip"]:
-            await ctx.send("❌ Geçersiz tip! Kullanım: `!key [normal/premium/vip] [sayı]`")
-            return
+        # Tip kontrolü ve düzeltme
+        if isinstance(key_type, int):
+            # Eğer ilk parametre sayı ise, count olarak al
+            count = key_type
+            key_type = "normal"
+        elif key_type.lower() not in ["normal", "premium", "prem", "vip"]:
+            # Geçersiz tip ise normal yap
+            key_type = "normal"
             
-        # Key'leri üret ve ekle
+        # Key'leri üret ve ekle - Gelişmiş sistem
         generated_keys = []
         failed_keys = []
         
         for i in range(count):
-            new_key = generate_key(key_type)
-            result = await make_api_request("add-key", {"key": new_key})
+            # 10 deneme yap unique key için
+            key_generated = False
+            for attempt in range(10):
+                new_key = generate_key(key_type)
+                result = await make_api_request("add-key", {"key": new_key})
+                
+                if result.get("status") == "success":
+                    generated_keys.append(new_key)
+                    key_generated = True
+                    break
+                elif "already exists" in result.get("message", "").lower():
+                    # Key zaten var, tekrar dene
+                    continue
+                else:
+                    # Başka bir hata
+                    break
             
-            if result.get("status") == "success":
-                generated_keys.append(new_key)
-            else:
-                failed_keys.append(new_key)
+            if not key_generated:
+                failed_keys.append(f"Attempt {i+1}")
         
         # Sonuçları göster
         if generated_keys:
@@ -96,12 +112,18 @@ async def key_command(ctx, key_type="normal", count=1):
             await ctx.send(f"{type_emoji} **{len(generated_keys)} adet {key_type.upper()} key oluşturuldu:**\n{keys_text}")
         
         if failed_keys:
-            await ctx.send(f"❌ {len(failed_keys)} key oluşturulamadı (muhtemelen zaten var)")
+            await ctx.send(f"⚠️ {len(failed_keys)} key oluşturulamadı. Tekrar deneyin.")
             
     except ValueError:
-        await ctx.send("❌ Geçersiz sayı! Kullanım: `!key [tip] [sayı]`")
+        await ctx.send("❌ Geçersiz sayı girdiniz!")
     except Exception as e:
-        await ctx.send(f"❌ Hata: {str(e)}")
+        error_msg = str(e)
+        if "too many requests" in error_msg.lower():
+            await ctx.send("⏳ Çok hızlı komut gönderiyorsunuz. Biraz bekleyin.")
+        elif "connection" in error_msg.lower():
+            await ctx.send("🔗 Sunucu bağlantı sorunu. Tekrar deneyin.")
+        else:
+            await ctx.send("❌ Beklenmeyen hata oluştu. Tekrar deneyin.")
 
 # 2. !keylist - Key listesi
 @bot.command(name='keylist')
