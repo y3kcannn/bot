@@ -9,10 +9,7 @@ DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 API_TOKEN = "ADMIN_API_SECRET_TOKEN_2024"
 BASE_URL = "https://midnightponywka.com/index.php?api=1&token=" + API_TOKEN
 
-BOT_TOKEN = "DISCORD_BOT_SECRET_TOKEN_2024_ULTRA_SECURE"
-BOT_DATA_URL = f"https://midnightponywka.com/bot-data.php?bot_token={BOT_TOKEN}"
-
-ALLOWED_CHANNEL_ID = 1385706278357303356
+ALLOWED_CHANNEL_ID = 1385706278357303356  # Sadece bu kanalda çalışacak
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -34,8 +31,6 @@ async def delete_after(ctx, msg, delay=30):
     await asyncio.sleep(delay)
     await msg.delete()
     await ctx.message.delete()
-
-# ---------------------- Komutlar ----------------------
 
 @bot.command()
 async def ping(ctx):
@@ -74,13 +69,10 @@ async def deletekey(ctx, key):
 @bot.command()
 async def keylist(ctx):
     if not is_authorized(ctx): return
-    r = requests.get(BOT_DATA_URL + "&file=keys")
+    r = requests.get(BASE_URL + "&action=key-list")
     data = r.json()
-    if data["status"] == "success":
-        keys = data["data"]["lines"][:20]
-        msg = await ctx.send("📜 **İlk 20 Key:**\n" + "\n".join(f"||`{k}`||" for k in keys))
-    else:
-        msg = await ctx.send(f"❌ **Hata:** {data['message']}")
+    keys = data["data"][:20]
+    msg = await ctx.send("📜 **İlk 20 Key:**\n" + "\n".join(f"||`{k}`||" for k in keys))
     await delete_after(ctx, msg)
 
 @bot.command()
@@ -102,16 +94,13 @@ async def unban(ctx, username):
 @bot.command()
 async def userlist(ctx):
     if not is_authorized(ctx): return
-    r = requests.get(BOT_DATA_URL + "&file=users")
+    r = requests.get(BASE_URL + "&action=banned-users")
     data = r.json()
-    if data["status"] == "success":
-        users = data["data"]["lines"]
-        if users:
-            msg = await ctx.send("📛 **Banlı Kullanıcılar:**\n" + "\n".join(f"🔸 `{u}`" for u in users[:20]))
-        else:
-            msg = await ctx.send("✅ **Hiçbir kullanıcı banlı değil.**")
+    banned = data["data"]
+    if banned:
+        msg = await ctx.send("📛 **Banlı Kullanıcılar:**\n" + "\n".join(f"🔸 `{u}`" for u in banned[:20]))
     else:
-        msg = await ctx.send(f"❌ **Hata:** {data['message']}")
+        msg = await ctx.send("✅ **Hiçbir kullanıcı banlı değil.**")
     await delete_after(ctx, msg)
 
 @bot.command()
@@ -160,14 +149,11 @@ async def auth(ctx, key):
 @bot.command()
 async def logs(ctx):
     if not is_authorized(ctx): return
-    r = requests.get(BOT_DATA_URL + "&file=logs")
+    r = requests.get(BASE_URL + "&action=logs")
     data = r.json()
-    if data["status"] == "success":
-        logs = data["data"]["lines"][-10:]
-        log_text = "\n".join(logs)
-        msg = await ctx.send(f"📝 **Son 10 Log:**\n```{log_text}```")
-    else:
-        msg = await ctx.send(f"❌ **Hata:** {data['message']}")
+    log_raw = data["data"]
+    log_text = "\n".join(log_raw[-10:])
+    msg = await ctx.send(f"📝 **Son 10 Log:**\n```{log_text}```")
     await delete_after(ctx, msg)
 
 @bot.command(name="komut")
