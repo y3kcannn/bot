@@ -1,806 +1,478 @@
 import discord
 from discord.ext import commands
-import aiohttp
+import requests
 import json
 import asyncio
-import random
-import string
+from datetime import datetime
 import os
 
-# Bot token - Railway environment variables
-TOKEN = os.getenv('DISCORD_TOKEN') or os.getenv('BOT_TOKEN')
-
-# Token kontrolü
-if not TOKEN:
-    print("❌ HATA: Bot token bulunamadı!")
-    print("Railway Dashboard'da environment variable ekleyin:")
-    print("1. https://railway.app/dashboard")
-    print("2. Projenizi seçin")
-    print("3. Variables sekmesine gidin")
-    print("4. DISCORD_TOKEN = 'your_bot_token_here' ekleyin")
-    exit(1)
-
-# API ayarları
-API_URL = "https://midnightponywka.com"
+# Bot Configuration
+TOKEN = "YOUR_BOT_TOKEN_HERE"
+GUILD_ID = 1234567890  # Your Discord server ID
+ADMIN_ROLE = "Admin"   # Role name that can use admin commands
+API_URL = "https://your-domain.com/api_optimized.php"
 API_TOKEN = "ADMIN_API_SECRET_TOKEN_2024"
 
 # Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+def make_api_request(action, data=None):
+    """Make API request to the server"""
+    try:
+        url = f"{API_URL}?api=1&token={API_TOKEN}&action={action}"
+        
+        if data:
+            response = requests.post(url, data=data, timeout=10)
+        else:
+            response = requests.get(url, timeout=10)
+            
+        return response.json()
+    except Exception as e:
+        return {"error": f"API request failed: {str(e)}"}
+
+def has_admin_role():
+    """Check if user has admin role"""
+    def predicate(ctx):
+        return any(role.name == ADMIN_ROLE for role in ctx.author.roles)
+    return commands.check(predicate)
 
 @bot.event
 async def on_ready():
-    print(f'{bot.user} başarıyla giriş yaptı!')
+    print(f'🚀 {bot.user} is online and ready!')
+    print(f'📊 Connected to {len(bot.guilds)} servers')
+    
+    # Set bot status
+    await bot.change_presence(
+        status=discord.Status.online,
+        activity=discord.Game(name="🔐 Keylogin Management System")
+    )
 
-# Helper function - API çağrıları
-async def make_api_request(action, data=None):
-    url = f"{API_URL}/?api=1&token={API_TOKEN}&action={action}"
-    try:
-        timeout = aiohttp.ClientTimeout(total=30)  # 30 saniye timeout
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            if data:
-                async with session.post(url, data=data) as response:
-                    if response.status == 200:
-                        return await response.json()
-                    else:
-                        return {"status": "error", "message": f"HTTP {response.status}"}
-            else:
-                async with session.get(url) as response:
-                    if response.status == 200:
-                        return await response.json()
-                    else:
-                        return {"status": "error", "message": f"HTTP {response.status}"}
-    except asyncio.TimeoutError:
-        return {"status": "error", "message": "Request timeout"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-# Key generation - 16 basamaklı random
-def generate_key(key_type="normal"):
-    import time
-    # Daha random seed için timestamp kullan
-    random.seed(int(time.time() * 1000000) % 2**32)
+@bot.command(name='genkey', aliases=['generate', 'gen'])
+@has_admin_role()
+async def generate_key(ctx):
+    """Generate a new license key"""
     
-    chars = string.ascii_uppercase + string.digits
-    # 16 basamaklı random key: 1231ASD235FFS123 gibi
-    return ''.join(random.choices(chars, k=16))
-
-# 1. !key [sayı] - Key üretme (16 basamaklı)
-@bot.command(name='key')
-async def key_command(ctx, count=1):
-    # Kullanıcının mesajını sil
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    try:
-        count = int(count)
-        if count < 1 or count > 10:
-            await ctx.send("❌ Key sayısı 1-10 arasında olmalı!")
-            return
-            
-        # Key'leri üret ve ekle - Gelişmiş sistem
-        generated_keys = []
-        failed_keys = []
-        
-        for i in range(count):
-            # 20 deneme yap unique key için (artırdık)
-            key_generated = False
-            last_error = "Unknown error"
-            
-            for attempt in range(20):
-                new_key = generate_key()
-                result = await make_api_request("add-key", {"key": new_key})
-                
-                # Response kontrolü
-                if isinstance(result, dict):
-                    if result.get("status") == "success":
-                        generated_keys.append(new_key)
-                        key_generated = True
-                        break
-                    elif "already exists" in result.get("message", "").lower():
-                        # Key zaten var, tekrar dene
-                        continue
-                    else:
-                        # Başka bir hata
-                        last_error = result.get("message", "API error")
-                        # Rate limit kontrolü
-                        if "request" in last_error.lower() or "wait" in last_error.lower():
-                            await asyncio.sleep(2)  # 2 saniye bekle
-                            continue
-                        break
-                else:
-                    # Response dict değilse
-                    last_error = "Invalid API response"
-                    break
-                    
-                # Her deneme arasında kısa pause
-                if attempt < 19:
-                    await asyncio.sleep(0.1)
-            
-            if not key_generated:
-                failed_keys.append(f"Key {i+1}: {last_error}")
-        
-        # Sonuçları göster
-        if generated_keys:
-            embed = discord.Embed(
-                title="🔑 Key Oluşturuldu",
-                color=0x00ff00,  # Yeşil
-                description=f"**{len(generated_keys)} adet key başarıyla oluşturuldu**"
-            )
-            
-            # Key'leri embed field olarak ekle
-            keys_text = "\n".join([f"`{key}`" for key in generated_keys])
-            embed.add_field(
-                name="📋 Key Listesi", 
-                value=keys_text,
-                inline=False
-            )
-            
-            # Bot profil resmi
-            if bot.user and bot.user.avatar:
-                embed.set_thumbnail(url=bot.user.avatar.url)
-            
-            # Footer
-            embed.set_footer(
-                text="Keylogin Key Management",
-                icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-            )
-            
-            message = await ctx.send(embed=embed)
-            # 10 saniye sonra bot mesajını sil
-            await asyncio.sleep(10)
-            try:
-                await message.delete()
-            except:
-                pass
-        
-        if failed_keys:
-            if len(failed_keys) == 1:
-                message = await ctx.send(f"⚠️ 1 key oluşturulamadı. Sunucu yoğun, tekrar deneyin.")
-            else:
-                message = await ctx.send(f"⚠️ {len(failed_keys)} key oluşturulamadı. Sunucu yoğun, tekrar deneyin.")
-            # 10 saniye sonra sil
-            await asyncio.sleep(10)
-            try:
-                await message.delete()
-            except:
-                pass
-            
-    except ValueError:
-        message = await ctx.send("❌ Geçersiz sayı girdiniz!")
-        await asyncio.sleep(10)
-        try:
-            await message.delete()
-        except:
-            pass
-    except Exception as e:
-        error_msg = str(e)
-        if "too many requests" in error_msg.lower():
-            message = await ctx.send("⏳ Çok hızlı komut gönderiyorsunuz. Biraz bekleyin.")
-        elif "connection" in error_msg.lower():
-            message = await ctx.send("🔗 Sunucu bağlantı sorunu. Tekrar deneyin.")
-        else:
-            message = await ctx.send("❌ Beklenmeyen hata oluştu. Tekrar deneyin.")
-        await asyncio.sleep(10)
-        try:
-            await message.delete()
-        except:
-            pass
-
-# 2. !keylist - Key listesi
-@bot.command(name='keylist')
-async def keylist_command(ctx):
-    # Kullanıcının mesajını sil
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    result = await make_api_request("list-keys")
-    
-    if result.get("status") == "success":
-        keys = result.get("key_details", [])
-        if not keys:
-            await ctx.send("📝 Hiç key bulunamadı!")
-            return
-            
-        # Key'leri türe göre grupla
-        vip_keys = [k for k in keys if k.get("type") == "VIP"]
-        premium_keys = [k for k in keys if k.get("type") == "Premium"] 
-        normal_keys = [k for k in keys if k.get("type") == "Normal"]
-        legacy_keys = [k for k in keys if k.get("type") == "Legacy"]
-        
-        message = "📝 **KEY LİSTESİ**\n\n"
-        
-        if vip_keys:
-            message += "👑 **VIP Keys:**\n"
-            for key in vip_keys:  # Tüm VIP key'leri göster
-                status = "🔗 Bağlı" if key.get("bound") else "🆓 Boş"
-                message += f"`{key['key']}` - {status}\n"
-            message += "\n"
-            
-        if premium_keys:
-            message += "💎 **Premium Keys:**\n"
-            for key in premium_keys:  # Tüm Premium key'leri göster
-                status = "🔗 Bağlı" if key.get("bound") else "🆓 Boş"
-                message += f"`{key['key']}` - {status}\n"
-            message += "\n"
-            
-        if normal_keys:
-            message += "🔑 **Normal Keys:**\n"
-            for key in normal_keys:  # Tüm Normal key'leri göster
-                status = "🔗 Bağlı" if key.get("bound") else "🆓 Boş"
-                message += f"`{key['key']}` - {status}\n"
-            message += "\n"
-            
-        if legacy_keys:
-            message += "📜 **Legacy Keys:**\n"
-            for key in legacy_keys:  # Tüm Legacy key'leri göster
-                status = "🔗 Bağlı" if key.get("bound") else "🆓 Boş"
-                message += f"`{key['key']}` - {status}\n"
-            message += "\n"
-        
-        # İstatistikler
-        total = result.get("total_keys", 0)
-        bound = result.get("bound_keys", 0)
-        available = result.get("available_keys", 0)
-        
-        message += f"📊 **Toplam:** {total} | **Bağlı:** {bound} | **Boş:** {available}"
-        
-        # Mesaj 2000 karakterden uzunsa parçalara böl
-        if len(message) <= 2000:
-            await ctx.send(message)
-        else:
-            # Mesajı parçalara böl
-            parts = []
-            current_part = ""
-            lines = message.split('\n')
-            
-            for line in lines:
-                if len(current_part + line + '\n') <= 1900:  # Biraz margin bırak
-                    current_part += line + '\n'
-                else:
-                    if current_part:
-                        parts.append(current_part.strip())
-                    current_part = line + '\n'
-            
-            if current_part:
-                parts.append(current_part.strip())
-            
-            # Her parçayı gönder
-            for i, part in enumerate(parts):
-                if i == 0:
-                    await ctx.send(part)
-                else:
-                    await ctx.send(f"**Devamı (Sayfa {i+1}):**\n\n{part}")
-    else:
-        await ctx.send(f"❌ Hata: {result.get('message', 'Bilinmeyen hata')}")
-
-# 3. !delete <key> - Key silme
-@bot.command(name='delete')
-async def delete_command(ctx, key=None):
-    # Kullanıcının mesajını sil
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    if not key:
-        await ctx.send("❌ Key belirtmelisiniz! Kullanım: `!delete <key>`")
-        return
-    
-    result = await make_api_request("delete-key", {"key": key})
-    
-    if result.get("status") == "success":
-        await ctx.send(f"✅ Key silindi: `{key}`")
-    else:
-        await ctx.send(f"❌ Hata: {result.get('message', 'Key silinemedi')}")
-
-# 4. !reset <key> - Key SID reset
-@bot.command(name='reset')
-async def reset_command(ctx, key=None):
-    if not key:
-        await ctx.send("❌ Key belirtmelisiniz! Kullanım: `!reset <key>`")
-        return
-    
-    result = await make_api_request("unbind-key", {"key": key})
-    
-    if result.get("status") == "success":
-        await ctx.send(f"✅ Key SID'i resetlendi: `{key}`")
-    else:
-        await ctx.send(f"❌ Hata: {result.get('message', 'SID resetlenemedi')}")
-
-# 5. !keyinfo <key> - Key bilgisi
-@bot.command(name='keyinfo')
-async def keyinfo_command(ctx, key=None):
-    if not key:
-        await ctx.send("❌ Key belirtmelisiniz! Kullanım: `!keyinfo <key>`")
-        return
-    
-    result = await make_api_request("key-info", {"key": key})
-    
-    if result.get("status") == "success":
-        bound = result.get("bound", False)
-        sid = result.get("sid", "Yok")
-        key_type = result.get("type", "Unknown")
-        created = result.get("created", "Bilinmiyor")
-        
-        type_emoji = "👑" if key_type == "VIP" else "💎" if key_type == "Premium" else "🔑" if key_type == "Normal" else "📜"
-        status_emoji = "🔗" if bound else "🆓"
-        
-        message = f"{type_emoji} **Key Bilgisi**\n"
-        message += f"🔑 **Key:** `{key}`\n"
-        message += f"📁 **Tip:** {key_type}\n"
-        message += f"{status_emoji} **Durum:** {'Bağlı' if bound else 'Boş'}\n"
-        message += f"🆔 **SID:** `{sid if bound else 'Yok'}`\n"
-        message += f"📅 **Oluşturulma:** {created}"
-        
-        await ctx.send(message)
-    else:
-        await ctx.send(f"❌ Hata: {result.get('message', 'Key bulunamadı')}")
-
-# 6. !ban <user> - Kullanıcı ban
-@bot.command(name='ban')
-async def ban_command(ctx, username=None):
-    # Kullanıcının mesajını sil
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    if not username:
-        await ctx.send("❌ Kullanıcı adı belirtmelisiniz! Kullanım: `!ban <username>`")
-        return
-    
-    result = await make_api_request("ban-user", {"username": username})
-    
-    if result.get("status") == "success":
-        await ctx.send(f"🔨 Kullanıcı banlandı: `{username}`")
-    else:
-        await ctx.send(f"❌ Hata: {result.get('message', 'Kullanıcı banlanamadı')}")
-
-# 7. !unban <user> - Kullanıcı unban
-@bot.command(name='unban')
-async def unban_command(ctx, username=None):
-    # Kullanıcının mesajını sil
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    if not username:
-        embed = discord.Embed(
-            title="❌ Kullanıcı Adı Gerekli",
-            color=0xff0000,  # Kırmızı
-            description="**Kullanım:** `!unban <username>`"
-        )
-        
-        # Bot profil resmi
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        # Footer
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        message = await ctx.send(embed=embed)
-        # 10 saniye sonra sil
-        await asyncio.sleep(10)
-        try:
-            await message.delete()
-        except:
-            pass
-        return
-    
-    result = await make_api_request("unban-user", {"username": username})
-    
-    if result.get("status") == "success":
-        embed = discord.Embed(
-            title="✅ Ban Kaldırıldı",
-            color=0x00ff00,  # Yeşil
-            description=f"**{username}** kullanıcısının banı kaldırıldı"
-        )
-        
-        # Bot profil resmi
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        # Footer
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        message = await ctx.send(embed=embed)
-    else:
-        embed = discord.Embed(
-            title="❌ Ban Kaldırılamadı",
-            color=0xff0000,  # Kırmızı
-            description=f"**Hata:** {result.get('message', 'Ban kaldırılamadı')}"
-        )
-        
-        # Bot profil resmi
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        # Footer
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        message = await ctx.send(embed=embed)
-    
-    # 10 saniye sonra bot mesajını sil
-    await asyncio.sleep(10)
-    try:
-        await message.delete()
-    except:
-        pass
-
-# 8. (SID ban komutları kaldırıldı - !ban komutu otomatik SID banlar)
-
-# 10. !userinfo <user> - Kullanıcı durumu
-@bot.command(name='userinfo')
-async def userinfo_command(ctx, username=None):
-    # Kullanıcının mesajını sil
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    if not username:
-        embed = discord.Embed(
-            title="❌ Kullanıcı Adı Gerekli",
-            color=0xff0000,  # Kırmızı
-            description="**Kullanım:** `!userinfo <username>`"
-        )
-        
-        # Bot profil resmi
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        # Footer
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        message = await ctx.send(embed=embed)
-        # 10 saniye sonra sil
-        await asyncio.sleep(10)
-        try:
-            await message.delete()
-        except:
-            pass
-        return
-    
-    result = await make_api_request("check-ban", {"username": username})
-    
-    if result.get("banned"):
-        ban_type = result.get("ban_type", "unknown")
-        ban_target = result.get("ban_target", "unknown")
-        
-        embed = discord.Embed(
-            title="🔨 Kullanıcı Banlı",
-            color=0xff0000,  # Kırmızı
-            description=f"**{username}** banlandı!"
-        )
-        embed.add_field(name="🎯 Ban Türü", value=ban_type, inline=True)
-        embed.add_field(name="📍 Ban Hedefi", value=f"`{ban_target}`", inline=True)
-        
-        # Bot profil resmi
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        # Footer
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        message = await ctx.send(embed=embed)
-    else:
-        embed = discord.Embed(
-            title="✅ Kullanıcı Temiz",
-            color=0x00ff00,  # Yeşil
-            description=f"**{username}** banlı değil"
-        )
-        
-        # Bot profil resmi
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        # Footer
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        message = await ctx.send(embed=embed)
-    
-    # 10 saniye sonra bot mesajını sil
-    await asyncio.sleep(10)
-    try:
-        await message.delete()
-    except:
-        pass
-
-# 11. !stats - İstatistikler
-@bot.command(name='stats')
-async def stats_command(ctx):
-    # Kullanıcının mesajını sil
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    result = await make_api_request("stats")
-    
-    if result.get("status") == "success":
-        total_keys = result.get("total_keys", 0)
-        bound_keys = result.get("bound_keys", 0)
-        available_keys = result.get("available_keys", 0)
-        banned_users = result.get("banned_users", 0)
-        banned_sids = result.get("banned_sids", 0)
-        version = result.get("version", "Unknown")
-        
-        embed = discord.Embed(
-            title="📊 Sistem İstatistikleri",
-            color=0x0099ff,  # Mavi
-            description="Keylogin yönetim sistemi durumu"
-        )
-        
-        # Key bilgileri
-        embed.add_field(
-            name="🔑 Key Durumu",
-            value=f"**Toplam:** {total_keys}\n**Bağlı:** {bound_keys}\n**Boş:** {available_keys}",
-            inline=True
-        )
-        
-        # Ban bilgileri
-        embed.add_field(
-            name="🔨 Ban Durumu",
-            value=f"**Kullanıcı:** {banned_users}\n**SID:** {banned_sids}",
-            inline=True
-        )
-        
-        # Sistem bilgileri
-        embed.add_field(
-            name="📱 Sistem",
-            value=f"**Versiyon:** {version}",
-            inline=True
-        )
-        
-        # Bot profil resmi
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        # Footer
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        message = await ctx.send(embed=embed)
-    else:
-        embed = discord.Embed(
-            title="❌ İstatistik Hatası",
-            color=0xff0000,  # Kırmızı
-            description=f"**Hata:** {result.get('message', 'İstatistikler alınamadı')}"
-        )
-        
-        # Bot profil resmi
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        # Footer
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        message = await ctx.send(embed=embed)
-    
-    # 10 saniye sonra bot mesajını sil
-    await asyncio.sleep(10)
-    try:
-        await message.delete()
-    except:
-        pass
-
-# 12. !version <yeni_versiyon> - Versiyon güncelleme
-@bot.command(name='version')
-async def version_command(ctx, new_version=None):
-    # Kullanıcının mesajını sil
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    try:
-        if new_version:
-            # Versiyon güncelle
-            result = await make_api_request("update-version", {"version": new_version})
-            if result.get("status") == "success":
-                embed = discord.Embed(
-                    title="✅ Versiyon Güncellendi",
-                    color=0x00ff00,  # Yeşil
-                    description=f"**Yeni versiyon:** `{new_version}`"
-                )
-                
-                # Bot profil resmi
-                if bot.user and bot.user.avatar:
-                    embed.set_thumbnail(url=bot.user.avatar.url)
-                
-                # Footer
-                embed.set_footer(
-                    text="Keylogin Key Management",
-                    icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-                )
-                
-                message = await ctx.send(embed=embed)
-            else:
-                embed = discord.Embed(
-                    title="❌ Versiyon Güncellenemedi",
-                    color=0xff0000,  # Kırmızı
-                    description=f"**Hata:** {result.get('message', 'Bilinmeyen hata')}"
-                )
-                
-                # Bot profil resmi
-                if bot.user and bot.user.avatar:
-                    embed.set_thumbnail(url=bot.user.avatar.url)
-                
-                # Footer
-                embed.set_footer(
-                    text="Keylogin Key Management",
-                    icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-                )
-                
-                message = await ctx.send(embed=embed)
-        else:
-            # Mevcut versiyonu göster
-            result = await make_api_request("version")
-            if result.get("status") == "success":
-                version = result.get("version", "Unknown")
-                embed = discord.Embed(
-                    title="📱 Mevcut Versiyon",
-                    color=0x0099ff,  # Mavi
-                    description=f"**Sistem versiyonu:** `{version}`"
-                )
-                
-                # Bot profil resmi
-                if bot.user and bot.user.avatar:
-                    embed.set_thumbnail(url=bot.user.avatar.url)
-                
-                # Footer
-                embed.set_footer(
-                    text="Keylogin Key Management",
-                    icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-                )
-                
-                message = await ctx.send(embed=embed)
-            else:
-                embed = discord.Embed(
-                    title="❌ Versiyon Bilgisi Alınamadı",
-                    color=0xff0000,  # Kırmızı
-                    description="Sunucu ile bağlantı kurulamadı"
-                )
-                
-                # Bot profil resmi
-                if bot.user and bot.user.avatar:
-                    embed.set_thumbnail(url=bot.user.avatar.url)
-                
-                # Footer
-                embed.set_footer(
-                    text="Keylogin Key Management",
-                    icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-                )
-                
-                message = await ctx.send(embed=embed)
-        
-        # 10 saniye sonra bot mesajını sil
-        await asyncio.sleep(10)
-        try:
-            await message.delete()
-        except:
-            pass
-            
-    except Exception as e:
-        embed = discord.Embed(
-            title="❌ Beklenmeyen Hata",
-            color=0xff0000,  # Kırmızı
-            description="Komut işlenirken hata oluştu"
-        )
-        
-        # Bot profil resmi
-        if bot.user and bot.user.avatar:
-            embed.set_thumbnail(url=bot.user.avatar.url)
-        
-        # Footer
-        embed.set_footer(
-            text="Keylogin Key Management",
-            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
-        )
-        
-        message = await ctx.send(embed=embed)
-        # 10 saniye sonra sil
-        await asyncio.sleep(10)
-        try:
-            await message.delete()
-        except:
-            pass
-
-# 13. !help - Yardım
-@bot.command(name='help')
-async def help_command(ctx):
-    # Kullanıcının mesajını sil
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-    
-    # Güzel embed oluştur
     embed = discord.Embed(
-        title="🤖 Keylogin Bot Komutları",
-        description="Hardware spoofer key yönetim sistemi",
-        color=0x00ff88
+        title="🔄 Generating Key...",
+        description="Please wait while we generate your license key.",
+        color=discord.Color.yellow()
+    )
+    message = await ctx.send(embed=embed)
+    
+    # Generate key via API
+    result = make_api_request('generate-key')
+    
+    if 'error' in result:
+        embed = discord.Embed(
+            title="❌ Key Generation Failed",
+            description=f"Error: {result['error']}",
+            color=discord.Color.red()
+        )
+        await message.edit(embed=embed)
+        return
+    
+    # Success
+    embed = discord.Embed(
+        title="✅ Key Generated Successfully",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="🔑 License Key", value=f"`{result['key']}`", inline=False)
+    embed.add_field(name="📅 Created", value=result['created'], inline=True)
+    embed.add_field(name="📋 Status", value="Ready to use", inline=True)
+    embed.set_footer(text="⚠️ Keep this key secure and share only with authorized users")
+    
+    await message.edit(embed=embed)
+    
+    # Log to console
+    print(f"🔑 Key generated by {ctx.author}: {result['key']}")
+
+@bot.command(name='ban')
+@has_admin_role()
+async def ban_user(ctx, username=None, ip=None):
+    """Ban a user by username and/or IP"""
+    
+    if not username and not ip:
+        embed = discord.Embed(
+            title="❌ Invalid Usage",
+            description="Usage: `!ban <username> [ip]`\nExample: `!ban John123 192.168.1.100`",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    embed = discord.Embed(
+        title="🔄 Processing Ban...",
+        description="Banning user from the system...",
+        color=discord.Color.yellow()
+    )
+    message = await ctx.send(embed=embed)
+    
+    # Prepare ban data
+    ban_data = {}
+    if username:
+        ban_data['username'] = username
+    if ip:
+        ban_data['ip'] = ip
+    
+    # Ban via API
+    result = make_api_request('ban-user', ban_data)
+    
+    if 'error' in result:
+        embed = discord.Embed(
+            title="❌ Ban Failed",
+            description=f"Error: {result['error']}",
+            color=discord.Color.red()
+        )
+        await message.edit(embed=embed)
+        return
+    
+    # Success
+    embed = discord.Embed(
+        title="🔨 User Banned Successfully",
+        color=discord.Color.red()
     )
     
-    # Bot'un profil fotoğrafını ekle
-    embed.set_thumbnail(url=bot.user.avatar.url if bot.user.avatar else bot.user.default_avatar.url)
+    if username:
+        embed.add_field(name="👤 Username", value=f"`{username}`", inline=True)
+    if ip:
+        embed.add_field(name="🌐 IP Address", value=f"`{ip}`", inline=True)
     
-    # Key işlemleri
-    embed.add_field(
-        name="🔑 Key İşlemleri",
-        value="`!key` - Yeni key üret\n"
-              "`!keylist` - Key listesini görüntüle\n"
-              "`!delete <key>` - Key'i sistemden sil\n"
-              "`!reset <key>` - Key'i sıfırla\n"
-              "`!keyinfo <key>` - Key detaylarını göster",
-        inline=False
-    )
+    embed.add_field(name="📅 Banned At", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), inline=False)
+    embed.set_footer(text="🚫 This user can no longer access the system")
     
-    # Ban işlemleri
-    embed.add_field(
-        name="🔨 Ban İşlemleri",
-        value="`!ban <user>` - Kullanıcıyı tamamen banla\n"
-              "`!unban <user>` - Kullanıcı banını kaldır\n"
-              "`!userinfo <user>` - Kullanıcı durumunu kontrol et",
-        inline=False
-    )
+    await message.edit(embed=embed)
     
-    # Sistem
-    embed.add_field(
-        name="📊 Sistem",
-        value="`!stats` - Sistem istatistikleri\n"
-              "`!version [yeni_versiyon]` - Versiyon görüntüle/güncelle\n"
-              "`!help` - Bu yardım menüsü",
-        inline=False
-    )
+    # Log to console
+    print(f"🔨 User banned by {ctx.author}: {username} / {ip}")
+
+@bot.command(name='checkban', aliases=['check'])
+@has_admin_role()
+async def check_ban(ctx, username=None, ip=None):
+    """Check if a user is banned"""
     
-    # Footer
-    embed.set_footer(
-        text="Keylogin Management System | Sade ve Güçlü",
-        icon_url=bot.user.avatar.url if bot.user.avatar else bot.user.default_avatar.url
-    )
+    if not username and not ip:
+        embed = discord.Embed(
+            title="❌ Invalid Usage",
+            description="Usage: `!checkban <username> [ip]`\nExample: `!checkban John123`",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    # Prepare check data
+    check_data = {}
+    if username:
+        check_data['username'] = username
+    if ip:
+        check_data['ip'] = ip
+    
+    # Check via API
+    result = make_api_request('check-ban', check_data)
+    
+    if 'error' in result:
+        embed = discord.Embed(
+            title="❌ Check Failed",
+            description=f"Error: {result['error']}",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    # Display result
+    if result.get('banned', False):
+        embed = discord.Embed(
+            title="🚫 User is Banned",
+            color=discord.Color.red()
+        )
+        status_icon = "🚫"
+        status_text = "BANNED"
+    else:
+        embed = discord.Embed(
+            title="✅ User is Not Banned",
+            color=discord.Color.green()
+        )
+        status_icon = "✅"
+        status_text = "ALLOWED"
+    
+    if username:
+        embed.add_field(name="👤 Username", value=f"`{username}`", inline=True)
+    if ip:
+        embed.add_field(name="🌐 IP Address", value=f"`{ip}`", inline=True)
+    
+    embed.add_field(name="📊 Status", value=f"{status_icon} {status_text}", inline=False)
     
     await ctx.send(embed=embed)
 
-# Bot'u çalıştır
+@bot.command(name='stats', aliases=['statistics'])
+@has_admin_role()
+async def show_stats(ctx):
+    """Show system statistics"""
+    
+    embed = discord.Embed(
+        title="🔄 Loading Statistics...",
+        description="Fetching system data...",
+        color=discord.Color.yellow()
+    )
+    message = await ctx.send(embed=embed)
+    
+    # Get stats via API
+    result = make_api_request('stats')
+    
+    if 'error' in result:
+        embed = discord.Embed(
+            title="❌ Failed to Load Stats",
+            description=f"Error: {result['error']}",
+            color=discord.Color.red()
+        )
+        await message.edit(embed=embed)
+        return
+    
+    # Create stats embed
+    embed = discord.Embed(
+        title="📊 System Statistics",
+        color=discord.Color.blue(),
+        timestamp=datetime.now()
+    )
+    
+    # Keys section
+    embed.add_field(
+        name="🔑 License Keys",
+        value=f"**Total:** {result['total_keys']}\n**Used:** {result['used_keys']}\n**Available:** {result['available_keys']}",
+        inline=True
+    )
+    
+    # Bans section
+    embed.add_field(
+        name="🚫 Banned Users",
+        value=f"**Usernames:** {result['banned_users']}\n**IP Addresses:** {result['banned_ips']}\n**Total:** {result['banned_users'] + result['banned_ips']}",
+        inline=True
+    )
+    
+    # Activity section
+    embed.add_field(
+        name="📈 Activity",
+        value=f"**Access Attempts:** {result['total_access_attempts']}\n**System Status:** 🟢 Online",
+        inline=True
+    )
+    
+    embed.set_footer(text="📊 Live system statistics")
+    
+    await message.edit(embed=embed)
+
+@bot.command(name='keys', aliases=['listkeys'])
+@has_admin_role()
+async def list_keys(ctx):
+    """List all license keys"""
+    
+    embed = discord.Embed(
+        title="🔄 Loading Keys...",
+        description="Fetching license key data...",
+        color=discord.Color.yellow()
+    )
+    message = await ctx.send(embed=embed)
+    
+    # Get keys via API
+    result = make_api_request('list-keys')
+    
+    if 'error' in result:
+        embed = discord.Embed(
+            title="❌ Failed to Load Keys",
+            description=f"Error: {result['error']}",
+            color=discord.Color.red()
+        )
+        await message.edit(embed=embed)
+        return
+    
+    keys = result.get('keys', {})
+    
+    if not keys:
+        embed = discord.Embed(
+            title="🔑 License Keys",
+            description="No keys found in the system.",
+            color=discord.Color.orange()
+        )
+        await message.edit(embed=embed)
+        return
+    
+    # Create keys display
+    embed = discord.Embed(
+        title="🔑 License Keys",
+        color=discord.Color.blue(),
+        timestamp=datetime.now()
+    )
+    
+    used_keys = []
+    unused_keys = []
+    
+    for key, data in (keys.items() if isinstance(keys, dict) else []):
+        if data['used']:
+            used_keys.append(f"`{key}` - {data['username']} ({data['first_use']})")
+        else:
+            unused_keys.append(f"`{key}` - Created: {data['created']}")
+    
+    if unused_keys:
+        embed.add_field(
+            name="🆕 Available Keys",
+            value="\n".join(unused_keys[:10]) + (f"\n*... and {len(unused_keys)-10} more*" if len(unused_keys) > 10 else ""),
+            inline=False
+        )
+    
+    if used_keys:
+        embed.add_field(
+            name="✅ Used Keys",
+            value="\n".join(used_keys[:10]) + (f"\n*... and {len(used_keys)-10} more*" if len(used_keys) > 10 else ""),
+            inline=False
+        )
+    
+    embed.set_footer(text=f"📊 Total: {len(keys)} keys")
+    
+    await message.edit(embed=embed)
+
+@bot.command(name='banned', aliases=['listbanned'])
+@has_admin_role()
+async def list_banned(ctx):
+    """List all banned users"""
+    
+    embed = discord.Embed(
+        title="🔄 Loading Banned Users...",
+        description="Fetching ban list...",
+        color=discord.Color.yellow()
+    )
+    message = await ctx.send(embed=embed)
+    
+    # Get banned users via API
+    result = make_api_request('list-banned')
+    
+    if 'error' in result:
+        embed = discord.Embed(
+            title="❌ Failed to Load Ban List",
+            description=f"Error: {result['error']}",
+            color=discord.Color.red()
+        )
+        await message.edit(embed=embed)
+        return
+    
+    banned = result.get('banned', {'usernames': [], 'ips': []})
+    
+    usernames = banned.get('usernames', [])
+    ips = banned.get('ips', [])
+    
+    if not usernames and not ips:
+        embed = discord.Embed(
+            title="🚫 Banned Users",
+            description="No banned users found.",
+            color=discord.Color.green()
+        )
+        await message.edit(embed=embed)
+        return
+    
+    # Create banned list display
+    embed = discord.Embed(
+        title="🚫 Banned Users",
+        color=discord.Color.red(),
+        timestamp=datetime.now()
+    )
+    
+    if usernames:
+        usernames_text = "\n".join([f"• `{username}`" for username in usernames])
+        embed.add_field(
+            name="👤 Banned Usernames",
+            value=usernames_text[:1024],  # Discord field limit
+            inline=False
+        )
+    
+    if ips:
+        ips_text = "\n".join([f"• `{ip}`" for ip in ips])
+        embed.add_field(
+            name="🌐 Banned IP Addresses",
+            value=ips_text[:1024],  # Discord field limit
+            inline=False
+        )
+    
+    total_banned = len(usernames) + len(ips)
+    embed.set_footer(text=f"🚫 Total banned entries: {total_banned}")
+    
+    await message.edit(embed=embed)
+
+@bot.command(name='help', aliases=['commands'])
+async def show_help(ctx):
+    """Show available commands"""
+    
+    embed = discord.Embed(
+        title="🤖 Keylogin Management Bot",
+        description="Available commands for system management",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="🔑 Key Management",
+        value="`!genkey` - Generate new license key\n`!keys` - List all license keys",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🚫 Ban Management",
+        value="`!ban <username> [ip]` - Ban user\n`!checkban <username> [ip]` - Check ban status\n`!banned` - List banned users",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="📊 System Info",
+        value="`!stats` - Show system statistics\n`!help` - Show this help message",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🔧 Requirements",
+        value=f"• Admin role: `{ADMIN_ROLE}`\n• All commands require admin permissions",
+        inline=False
+    )
+    
+    embed.set_footer(text="🔐 Secure license management system")
+    
+    await ctx.send(embed=embed)
+
+@bot.event
+async def on_command_error(ctx, error):
+    """Handle command errors"""
+    
+    if isinstance(error, commands.CheckFailure):
+        embed = discord.Embed(
+            title="❌ Access Denied",
+            description=f"You need the `{ADMIN_ROLE}` role to use this command.",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+    
+    elif isinstance(error, commands.CommandNotFound):
+        embed = discord.Embed(
+            title="❓ Unknown Command",
+            description="Use `!help` to see available commands.",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
+    
+    else:
+        embed = discord.Embed(
+            title="⚠️ Command Error",
+            description=f"An error occurred: {str(error)}",
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
+        print(f"Command error: {error}")
+
 if __name__ == "__main__":
-    print("🚀 Keylogin Discord Bot Starting...")
-    print(f"🌐 API URL: {API_URL}")
-    print("-" * 50)
+    print("🚀 Starting Keylogin Management Bot...")
+    print("📋 Make sure to configure:")
+    print("   • TOKEN - Your Discord bot token")
+    print("   • GUILD_ID - Your Discord server ID")
+    print("   • API_URL - Your API server URL")
+    print("   • ADMIN_ROLE - Admin role name")
+    print("=" * 50)
     
     try:
         bot.run(TOKEN)
     except Exception as e:
-        print(f"❌ HATA: {e}")
-        print("Token'ı kontrol edin veya yenileyin!")
-        exit(1)
+        print(f"❌ Failed to start bot: {e}") 
