@@ -422,24 +422,124 @@ async def stats_command(ctx):
 # 12. !version <yeni_versiyon> - Versiyon güncelleme
 @bot.command(name='version')
 async def version_command(ctx, new_version=None):
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     try:
         if new_version:
             # Versiyon güncelle
             result = await make_api_request("update-version", {"version": new_version})
             if result.get("status") == "success":
-                await ctx.send(f"✅ **Versiyon güncellendi:** `{new_version}`")
+                embed = discord.Embed(
+                    title="✅ Versiyon Güncellendi",
+                    color=0x00ff00,  # Yeşil
+                    description=f"**Yeni versiyon:** `{new_version}`"
+                )
+                
+                # Bot profil resmi
+                if bot.user and bot.user.avatar:
+                    embed.set_thumbnail(url=bot.user.avatar.url)
+                
+                # Footer
+                embed.set_footer(
+                    text="Keylogin Key Management",
+                    icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+                )
+                
+                message = await ctx.send(embed=embed)
             else:
-                await ctx.send(f"❌ Versiyon güncellenemedi: {result.get('message', 'Bilinmeyen hata')}")
+                embed = discord.Embed(
+                    title="❌ Versiyon Güncellenemedi",
+                    color=0xff0000,  # Kırmızı
+                    description=f"**Hata:** {result.get('message', 'Bilinmeyen hata')}"
+                )
+                
+                # Bot profil resmi
+                if bot.user and bot.user.avatar:
+                    embed.set_thumbnail(url=bot.user.avatar.url)
+                
+                # Footer
+                embed.set_footer(
+                    text="Keylogin Key Management",
+                    icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+                )
+                
+                message = await ctx.send(embed=embed)
         else:
             # Mevcut versiyonu göster
             result = await make_api_request("version")
             if result.get("status") == "success":
                 version = result.get("version", "Unknown")
-                await ctx.send(f"📱 **Mevcut Versiyon:** `{version}`")
+                embed = discord.Embed(
+                    title="📱 Mevcut Versiyon",
+                    color=0x0099ff,  # Mavi
+                    description=f"**Sistem versiyonu:** `{version}`"
+                )
+                
+                # Bot profil resmi
+                if bot.user and bot.user.avatar:
+                    embed.set_thumbnail(url=bot.user.avatar.url)
+                
+                # Footer
+                embed.set_footer(
+                    text="Keylogin Key Management",
+                    icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+                )
+                
+                message = await ctx.send(embed=embed)
             else:
-                await ctx.send("❌ Versiyon bilgisi alınamadı!")
+                embed = discord.Embed(
+                    title="❌ Versiyon Bilgisi Alınamadı",
+                    color=0xff0000,  # Kırmızı
+                    description="Sunucu ile bağlantı kurulamadı"
+                )
+                
+                # Bot profil resmi
+                if bot.user and bot.user.avatar:
+                    embed.set_thumbnail(url=bot.user.avatar.url)
+                
+                # Footer
+                embed.set_footer(
+                    text="Keylogin Key Management",
+                    icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+                )
+                
+                message = await ctx.send(embed=embed)
+        
+        # 10 saniye sonra bot mesajını sil
+        await asyncio.sleep(10)
+        try:
+            await message.delete()
+        except:
+            pass
+            
     except Exception as e:
-        await ctx.send("❌ Hata oluştu!")
+        embed = discord.Embed(
+            title="❌ Beklenmeyen Hata",
+            color=0xff0000,  # Kırmızı
+            description="Komut işlenirken hata oluştu"
+        )
+        
+        # Bot profil resmi
+        if bot.user and bot.user.avatar:
+            embed.set_thumbnail(url=bot.user.avatar.url)
+        
+        # Footer
+        embed.set_footer(
+            text="Keylogin Key Management",
+            icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+        )
+        
+        message = await ctx.send(embed=embed)
+        # 10 saniye sonra sil
+        await asyncio.sleep(10)
+        try:
+            await message.delete()
+        except:
+            pass
 
 # 13. !help - Yardım
 @bot.command(name='help')
