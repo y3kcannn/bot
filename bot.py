@@ -78,6 +78,12 @@ def generate_key():
 @bot.command(name='key')
 async def generate_key_command(ctx, count=None):
     """Key üret - Kullanım: !key [sayı]"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     if count is None:
         count = 1
     else:
@@ -165,6 +171,12 @@ async def generate_key_command(ctx, count=None):
 @bot.command(name='delkey')
 async def delete_key(ctx, key=None):
     """Key sil - Kullanım: !delkey <key>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     if key is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -233,6 +245,12 @@ async def delete_key(ctx, key=None):
 @bot.command(name='hwidreset')
 async def hwid_reset(ctx, key=None):
     """Key'i SID'den ayır - Kullanım: !hwidreset <key>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     if key is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -302,6 +320,12 @@ async def hwid_reset(ctx, key=None):
 @bot.command(name='keys')
 async def list_keys(ctx):
     """Tüm key'leri listele (SID bilgisi ile)"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     loading_msg = await ctx.send("⏳ Key'ler getiriliyor...")
     
     result = make_api_request('list-keys')
@@ -373,6 +397,12 @@ async def list_keys(ctx):
 @bot.command(name='test')
 async def test_key(ctx, key=None):
     """Key'i test et - Kullanım: !test <key>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     if key is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -412,6 +442,12 @@ async def test_key(ctx, key=None):
 @bot.command(name='ban')
 async def ban_user(ctx, username=None):
     """Kullanıcı banla - Kullanım: !ban <username>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     if username is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -447,6 +483,12 @@ async def ban_user(ctx, username=None):
 @bot.command(name='unban')
 async def unban_user(ctx, username=None):
     """Kullanıcı ban kaldır - Kullanım: !unban <username>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     if username is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
@@ -482,6 +524,12 @@ async def unban_user(ctx, username=None):
 @bot.command(name='help')
 async def show_help(ctx):
     """Yardım menüsü"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     embed = discord.Embed(
         title="🤖 Bot Komutları",
         color=0x0099ff
