@@ -419,7 +419,29 @@ async def stats_command(ctx):
     else:
         await ctx.send(f"❌ Hata: {result.get('message', 'İstatistikler alınamadı')}")
 
-# 12. !help - Yardım
+# 12. !version <yeni_versiyon> - Versiyon güncelleme
+@bot.command(name='version')
+async def version_command(ctx, new_version=None):
+    try:
+        if new_version:
+            # Versiyon güncelle
+            result = await make_api_request("update-version", {"version": new_version})
+            if result.get("status") == "success":
+                await ctx.send(f"✅ **Versiyon güncellendi:** `{new_version}`")
+            else:
+                await ctx.send(f"❌ Versiyon güncellenemedi: {result.get('message', 'Bilinmeyen hata')}")
+        else:
+            # Mevcut versiyonu göster
+            result = await make_api_request("version")
+            if result.get("status") == "success":
+                version = result.get("version", "Unknown")
+                await ctx.send(f"📱 **Mevcut Versiyon:** `{version}`")
+            else:
+                await ctx.send("❌ Versiyon bilgisi alınamadı!")
+    except Exception as e:
+        await ctx.send("❌ Hata oluştu!")
+
+# 13. !help - Yardım
 @bot.command(name='help')
 async def help_command(ctx):
     # Kullanıcının mesajını sil
@@ -462,6 +484,7 @@ async def help_command(ctx):
     embed.add_field(
         name="📊 Sistem",
         value="`!stats` - Sistem istatistikleri\n"
+              "`!version [yeni_versiyon]` - Versiyon görüntüle/güncelle\n"
               "`!help` - Bu yardım menüsü",
         inline=False
     )
