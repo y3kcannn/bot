@@ -541,6 +541,80 @@ async def cleanup_keys(ctx):
     # Log to console
     print(f"🧹 Cleanup performed by {ctx.author}")
 
+@bot.command(name='version')
+@has_admin_role()
+async def update_version(ctx, new_version=None):
+    """Version kontrolü veya güncelleme"""
+    
+    # Delete user's command message
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    if new_version is None:
+        # Sadece mevcut version'ı göster
+        result = make_api_request('version')
+        
+        if 'error' in result:
+            error_embed = create_embed(
+                "❌ Version Kontrol Hatası",
+                f"**Hata:** {result['error']}",
+                0xff0000
+            )
+            await ctx.send(embed=error_embed)
+            return
+        
+        # Current version embed
+        version_embed = create_embed(
+            "📋 Güncel Version",
+            f"**🔢 Mevcut Version:** `{result.get('version', 'Unknown')}`\n**🔍 Talep Eden:** {ctx.author.mention}",
+            0x00ff00
+        )
+        version_embed.add_field(
+            name="ℹ️ Bilgi", 
+            value="Version güncellemek için: `!version <yeni_version>`", 
+            inline=False
+        )
+        await ctx.send(embed=version_embed)
+        return
+    
+    # Version güncelleme
+    loading_embed = create_embed(
+        "🔄 Version Güncelleniyor...",
+        f"**📝 Yeni Version:** `{new_version}`",
+        0xffff00
+    )
+    msg = await ctx.send(embed=loading_embed)
+    
+    # Update via API
+    result = make_api_request('update-version', {'version': new_version})
+    
+    if 'error' in result:
+        error_embed = create_embed(
+            "❌ Version Güncelleme Hatası",
+            f"**Hata:** {result['error']}",
+            0xff0000
+        )
+        await msg.edit(embed=error_embed)
+        return
+    
+    # Success embed
+    success_embed = create_embed(
+        "✅ Version Güncellendi",
+        f"**📝 Eski Version:** `{result.get('old_version', 'Unknown')}`\n**🆕 Yeni Version:** `{result.get('new_version', new_version)}`\n**👮 İşlemi Yapan:** {ctx.author.mention}",
+        0x00ff00
+    )
+    success_embed.add_field(
+        name="ℹ️ Bilgi", 
+        value="Kullanıcılar bir sonraki girişte otomatik güncellenecek!", 
+        inline=False
+    )
+    await msg.edit(embed=success_embed)
+    
+    # Log to console
+    print(f"📋 Version updated by {ctx.author}: {result.get('old_version')} -> {new_version}")
+
 @bot.command(name='help')
 async def show_help(ctx):
     """Show available commands"""
@@ -561,6 +635,12 @@ async def show_help(ctx):
     help_embed.add_field(
         name="🔑 Key Yönetimi",
         value="```\n!genkey  - Yeni lisans anahtarı\n!keys    - Key listesi\n!cleanup - Süresi dolmuş keyler\n!stats   - İstatistikler```",
+        inline=True
+    )
+    
+    help_embed.add_field(
+        name="🔧 Sistem Yönetimi",
+        value="```\n!version - Version kontrol/güncelle\n         - Loader versiyonu\n         - Otomatik güncelleme```",
         inline=True
     )
     
