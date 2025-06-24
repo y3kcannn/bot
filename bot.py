@@ -4,9 +4,10 @@ import requests
 import json
 import asyncio
 import datetime
+import os
 
-# Bot ayarları
-BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"  # Buraya bot token'ını koy
+# Bot ayarları - Railway'den environment variable'ı al
+BOT_TOKEN = os.getenv('DISCORD_TOKEN')  # Railway'de DISCORD_TOKEN olarak kayıtlı
 API_BASE_URL = "https://midnightponywka.com"
 ADMIN_TOKEN = "ADMIN_API_SECRET_TOKEN_2024"
 
@@ -443,23 +444,29 @@ async def on_command_error(ctx, error):
         await ctx.send(embed=embed)
         print(f"Error: {error}")
 
+# Ana çalıştırma - Railway için optimize edilmiş
 if __name__ == "__main__":
     print("🚀 Keylogin Discord Bot Starting...")
-    print("⚠️  Bot token'ını BOT_TOKEN değişkeninde güncellemeyi unutma!")
-    print("📝 Discord Developer Portal'dan bot token'ını alabilirsin")
-    print("🔗 https://discord.com/developers/applications")
+    print(f"🔑 Token Status: {'✅ Found' if BOT_TOKEN else '❌ Missing'}")
+    print(f"🌐 API URL: {API_BASE_URL}")
     print("-" * 50)
     
-    if BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
-        print("❌ HATA: Bot token'ı ayarlanmamış!")
-        print("📝 Lütfen BOT_TOKEN değişkenini gerçek token ile değiştir")
-        input("Devam etmek için Enter'a bas...")
+    if not BOT_TOKEN:
+        print("❌ HATA: DISCORD_TOKEN environment variable bulunamadı!")
+        print("📝 Railway Variables sekmesinde DISCORD_TOKEN'ı kontrol et")
+        # Railway için input() kullanma - direkt exit
+        import sys
+        sys.exit(1)
     
     try:
         bot.run(BOT_TOKEN)
     except discord.LoginFailure:
         print("❌ HATA: Geçersiz bot token!")
         print("📝 Discord Developer Portal'dan doğru token'ı aldığından emin ol")
+        import sys
+        sys.exit(1)
     except Exception as e:
         print(f"❌ HATA: {e}")
-        input("Devam etmek için Enter'a bas...") 
+        print("📝 Detaylı hata bilgisi için logları kontrol et")
+        import sys
+        sys.exit(1) 
