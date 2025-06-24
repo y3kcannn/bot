@@ -324,27 +324,51 @@ async def help_command(ctx):
     except:
         pass
     
-    help_text = """🔰 **KEYLOGIN BOT KOMUTLARI**
-
-**🔑 Key İşlemleri:**
-`!key [tip] [sayı]` - Key üret (normal/premium/vip)
-`!keylist` - Key listesi
-`!delete <key>` - Key sil
-`!reset <key>` - Key SID resetle
-`!keyinfo <key>` - Key bilgisi
-
-**🔨 Ban İşlemleri:**
-`!ban <user>` - Kullanıcı ve SID banla
-`!unban <user>` - Kullanıcı ban kaldır
-`!userinfo <user>` - Kullanıcı durumu
-
-**📊 Sistem:**
-`!stats` - İstatistikler
-`!help` - Bu yardım menüsü
-
-**Örnek:** `!key vip 3` - 3 adet VIP key üret"""
-
-    await ctx.send(help_text)
+    # Güzel embed oluştur
+    embed = discord.Embed(
+        title="🤖 Keylogin Bot Komutları",
+        description="Hardware spoofer key yönetim sistemi",
+        color=0x00ff88
+    )
+    
+    # Bot'un profil fotoğrafını ekle
+    embed.set_thumbnail(url=bot.user.avatar.url if bot.user.avatar else bot.user.default_avatar.url)
+    
+    # Key işlemleri
+    embed.add_field(
+        name="🔑 Key İşlemleri",
+        value="`!key` - Yeni key üret\n"
+              "`!keylist` - Key listesini görüntüle\n"
+              "`!delete <key>` - Key'i sistemden sil\n"
+              "`!reset <key>` - Key'i sıfırla\n"
+              "`!keyinfo <key>` - Key detaylarını göster",
+        inline=False
+    )
+    
+    # Ban işlemleri
+    embed.add_field(
+        name="🔨 Ban İşlemleri",
+        value="`!ban <user>` - Kullanıcıyı tamamen banla\n"
+              "`!unban <user>` - Kullanıcı banını kaldır\n"
+              "`!userinfo <user>` - Kullanıcı durumunu kontrol et",
+        inline=False
+    )
+    
+    # Sistem
+    embed.add_field(
+        name="📊 Sistem",
+        value="`!stats` - Sistem istatistikleri\n"
+              "`!help` - Bu yardım menüsü",
+        inline=False
+    )
+    
+    # Footer
+    embed.set_footer(
+        text="Keylogin Management System | Sade ve Güçlü",
+        icon_url=bot.user.avatar.url if bot.user.avatar else bot.user.default_avatar.url
+    )
+    
+    await ctx.send(embed=embed)
 
 # Bot'u çalıştır
 if __name__ == "__main__":
