@@ -699,6 +699,7 @@ async def show_stats(ctx):
             embed.add_field(name="📈 Kullanım Oranı", value=f"**%{usage_percent}**", inline=True)
         
         embed.add_field(name="🚫 Banned User", value=f"**{result.get('banned_users', 0)}** kişi", inline=True)
+        embed.add_field(name="🔒 Banned IP", value=f"**{result.get('banned_ips', 0)}** IP", inline=True)
         embed.add_field(name="📦 API Version", value=f"**{result.get('version', 'N/A')}**", inline=True)
         
         # Sunucu bilgileri
@@ -798,6 +799,88 @@ async def unban_user(ctx, username=None):
     
     await ctx.send(embed=embed)
 
+@bot.command(name='banip', aliases=['ipban'])
+async def ban_ip(ctx, ip=None):
+    """IP banla - Kullanım: !banip <ip>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
+    if ip is None:
+        embed = discord.Embed(
+            title="❌ Hatalı Kullanım",
+            description="**Kullanım:** `!banip <ip>`\n**Örnek:** `!banip 192.168.1.100`",
+            color=0xff0000
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    loading_msg = await ctx.send("⏳ IP banlanıyor...")
+    
+    result = make_api_request('ban-ip', 'POST', {'ip': ip})
+    
+    await loading_msg.delete()
+    
+    if result.get('status') == 'success':
+        embed = discord.Embed(
+            title="🚫 IP Banlandı",
+            description=f"**IP Adresi:** `{ip}`\n**Durum:** Banlandı",
+            color=0xff0000
+        )
+        embed.add_field(name="📝 Not", value="Bu IP adresi artık API'ye erişemeyecek", inline=False)
+        embed.set_footer(text=f"Banlayan: {ctx.author}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+    else:
+        embed = discord.Embed(
+            title="❌ Hata",
+            description=f"IP banlanamadı: {result.get('message', 'Bilinmeyen hata')}",
+            color=0xff0000
+        )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name='unbanip', aliases=['ipunban'])
+async def unban_ip(ctx, ip=None):
+    """IP ban kaldır - Kullanım: !unbanip <ip>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+        
+    if ip is None:
+        embed = discord.Embed(
+            title="❌ Hatalı Kullanım",
+            description="**Kullanım:** `!unbanip <ip>`\n**Örnek:** `!unbanip 192.168.1.100`",
+            color=0xff0000
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    loading_msg = await ctx.send("⏳ IP ban kaldırılıyor...")
+    
+    result = make_api_request('unban-ip', 'POST', {'ip': ip})
+    
+    await loading_msg.delete()
+    
+    if result.get('status') == 'success':
+        embed = discord.Embed(
+            title="✅ IP Ban Kaldırıldı",
+            description=f"**IP Adresi:** `{ip}`\n**Durum:** Ban kaldırıldı",
+            color=0x00ff00
+        )
+        embed.add_field(name="📝 Not", value="Bu IP adresi artık API'ye erişebilir", inline=False)
+        embed.set_footer(text=f"Ban kaldıran: {ctx.author}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+    else:
+        embed = discord.Embed(
+            title="❌ Hata",
+            description=f"IP ban kaldırılamadı: {result.get('message', 'Bilinmeyen hata')}",
+            color=0xff0000
+        )
+    
+    await ctx.send(embed=embed)
+
 @bot.command(name='help', aliases=['yardim', 'commands'])
 async def show_help(ctx):
     """Yardım menüsü"""
@@ -845,7 +928,9 @@ async def show_help(ctx):
     embed.add_field(
         name="👥 Kullanıcı Yönetimi",
         value="`!ban <username>` - Kullanıcı banla\n"
-              "`!unban <username>` - Ban kaldır",
+              "`!unban <username>` - Ban kaldır\n"
+              "`!banip <ip>` - IP adresi banla\n"
+              "`!unbanip <ip>` - IP ban kaldır",
         inline=False
     )
     
