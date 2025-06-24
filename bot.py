@@ -5,10 +5,15 @@ import os
 import asyncio
 import time
 
-DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
+# Ortak URL’ler
+KEYS_URL = "https://midnightponywka.com/data/keys.txt/token121312312321"
+USERS_URL = "https://midnightponywka.com/data/user.txt/token121312312321"
+LOGS_URL = "https://midnightponywka.com/data/system.log/token121312312321"
 API_TOKEN = "ADMIN_API_SECRET_TOKEN_2024"
 BASE_URL = "https://midnightponywka.com/index.php?api=1&token=" + API_TOKEN
 
+# Bot yapılandırması
+DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 ALLOWED_CHANNEL_ID = 1385706278357303356
 
 intents = discord.Intents.default()
@@ -31,6 +36,8 @@ async def delete_after(ctx, msg, delay=30):
     await asyncio.sleep(delay)
     await msg.delete()
     await ctx.message.delete()
+
+# Komutlar
 
 @bot.command()
 async def ping(ctx):
@@ -69,11 +76,19 @@ async def deletekey(ctx, key):
 @bot.command()
 async def keylist(ctx):
     if not is_authorized(ctx): return
-    r = requests.get(BASE_URL + "&action=key-list")
-    data = r.json()
-    keys = data["data"][:20]
-    msg = await ctx.send(embed=embed_msg("📜 İlk 20 Key", "\n".join(f"||`{k}`||" for k in keys)))
-    await delete_after(ctx, msg)
+    try:
+        r = requests.get(KEYS_URL)
+        if r.status_code != 200:
+            raise Exception(f"HTTP {r.status_code}")
+        keys = r.text.strip().splitlines()[:20]
+        if not keys:
+            msg = await ctx.send(embed=embed_msg("📜 Key Listesi", "Hiç key yok."))
+        else:
+            msg = await ctx.send(embed=embed_msg("📜 İlk 20 Key", "\n".join(f"||`{k}`||" for k in keys)))
+        await delete_after(ctx, msg)
+    except Exception as e:
+        msg = await ctx.send(embed=embed_msg("❌ Hata", str(e)))
+        await delete_after(ctx, msg)
 
 @bot.command()
 async def ban(ctx, username):
@@ -94,14 +109,19 @@ async def unban(ctx, username):
 @bot.command()
 async def userlist(ctx):
     if not is_authorized(ctx): return
-    r = requests.get(BASE_URL + "&action=banned-users")
-    data = r.json()
-    banned = data["data"]
-    if banned:
-        msg = await ctx.send(embed=embed_msg("📛 Banlı Kullanıcılar", "\n".join(f"🔸 `{u}`" for u in banned[:20])))
-    else:
-        msg = await ctx.send(embed=embed_msg("✅ Temiz", "Hiçbir kullanıcı banlı değil."))
-    await delete_after(ctx, msg)
+    try:
+        r = requests.get(USERS_URL)
+        if r.status_code != 200:
+            raise Exception(f"HTTP {r.status_code}")
+        users = r.text.strip().splitlines()
+        if not users:
+            msg = await ctx.send(embed=embed_msg("✅ Temiz", "Banlı kullanıcı yok."))
+        else:
+            msg = await ctx.send(embed=embed_msg("📛 Banlı Kullanıcılar", "\n".join(f"🔸 `{u}`" for u in users[:20])))
+        await delete_after(ctx, msg)
+    except Exception as e:
+        msg = await ctx.send(embed=embed_msg("❌ Hata", str(e)))
+        await delete_after(ctx, msg)
 
 @bot.command()
 async def reset(ctx):
@@ -149,13 +169,17 @@ async def auth(ctx, key):
 @bot.command()
 async def logs(ctx):
     if not is_authorized(ctx): return
-    r = requests.get(BASE_URL + "&action=logs")
-    data = r.json()
-    log_raw = data["data"]
-    log_text = "\n".join(log_raw[-10:])
-    embed = embed_msg("📝 Son 10 Log", f"```{log_text}```")
-    msg = await ctx.send(embed=embed)
-    await delete_after(ctx, msg)
+    try:
+        r = requests.get(LOGS_URL)
+        if r.status_code != 200:
+            raise Exception(f"HTTP {r.status_code}")
+        logs = r.text.strip().splitlines()
+        last_10 = "\n".join(logs[-10:])
+        msg = await ctx.send(embed=embed_msg("📝 Son 10 Log", f"```{last_10}```"))
+        await delete_after(ctx, msg)
+    except Exception as e:
+        msg = await ctx.send(embed=embed_msg("❌ Hata", str(e)))
+        await delete_after(ctx, msg)
 
 @bot.command(name="komut")
 async def command_list(ctx):
