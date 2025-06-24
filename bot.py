@@ -647,37 +647,80 @@ async def show_help(ctx):
         
     embed = discord.Embed(
         title="🤖 Keylogin Bot Komutları",
-        description="**Basit ve güçlü key yönetim sistemi**",
+        description="**Tüm komutlar ve kullanımları**",
         color=0x0099ff
     )
     
-    # Ana komutlar
+    # Key İşlemleri
     embed.add_field(
         name="🔑 Key İşlemleri",
-        value="`!key [type] [count]` - Key üret\n`!keys` - Key listesi\n`!manage <action> <target>` - Key yönetimi",
+        value="`!key [type] [count]` - Key üret\n"
+              "• `!key` - 1 normal key\n"
+              "• `!key premium 3` - 3 premium key\n" 
+              "• `!key vip 5` - 5 VIP key\n"
+              "• `!key p 2` - 2 premium (kısaltma)\n"
+              "• `!key v 1` - 1 VIP (kısaltma)\n\n"
+              "`!keys` - Key listesi (SID durumu ile)\n"
+              "• Aliases: `!list`, `!l`",
         inline=False
     )
     
+    # Key Yönetimi
+    embed.add_field(
+        name="🔧 Key Yönetimi",
+        value="`!manage <action> <target>` - Key yönetimi\n"
+              "• `!manage delete SPFR-1234-5678` - Key sil\n"
+              "• `!manage reset SPFR-1234-5678` - SID sıfırla\n"
+              "• `!manage info SPFR-1234-5678` - Key bilgileri\n"
+              "• `!manage test SPFR-1234-5678` - Key test et\n"
+              "• Aliases: `!m`, kısaltmalar: `del`, `r`, `i`, `t`",
+        inline=False
+    )
+    
+    # Ban Yönetimi
     embed.add_field(
         name="🚫 Ban İşlemleri",
-        value="`!ban <action> <target>` - Ban yönetimi",
+        value="`!ban <action> <target>` - Ban yönetimi\n"
+              "• `!ban user testuser` - Kullanıcı banla\n"
+              "• `!ban unuser testuser` - Kullanıcı ban kaldır\n"
+              "• `!ban ip 192.168.1.100` - IP banla\n"
+              "• `!ban unip 192.168.1.100` - IP ban kaldır\n"
+              "• Aliases: `!b`, kısaltmalar: `u`, `uu`",
         inline=False
     )
     
+    # Sistem
     embed.add_field(
-        name="📊 Sistem",
-        value="`!stats` - İstatistikler\n`!help` - Bu menü",
+        name="📊 Sistem Komutları",
+        value="`!stats` - Sistem istatistikleri\n"
+              "• Key sayıları, ban durumları, sunucu bilgileri\n"
+              "• Aliases: `!s`\n\n"
+              "`!help` - Bu yardım menüsü\n"
+              "• Aliases: `!h`",
         inline=False
     )
     
-    # Örnekler
+    # Key Formatları
     embed.add_field(
-        name="💡 Hızlı Örnekler",
-        value="• `!key premium 3` - 3 premium key üret\n• `!manage delete SPFR-1234-5678` - Key sil\n• `!ban user testuser` - Kullanıcı banla",
+        name="🎨 Key Formatları",
+        value="• **Normal:** `SPFR-XXXX-XXXX` 🔑\n"
+              "• **Premium:** `SPFR-PREM-XXXX` 💎\n"
+              "• **VIP:** `SPFR-VIP-XXXX` 👑",
         inline=False
     )
     
-    embed.set_footer(text="Keylogin Management Bot | Basit ve Etkili")
+    # Hızlı Komutlar
+    embed.add_field(
+        name="⚡ Hızlı Komutlar",
+        value="`!k p 3` = 3 premium key üret\n"
+              "`!l` = Key listesi\n"
+              "`!m del SPFR-1234-5678` = Key sil\n"
+              "`!b u testuser` = Kullanıcı banla\n"
+              "`!s` = İstatistikler",
+        inline=False
+    )
+    
+    embed.set_footer(text="Keylogin Management Bot | Toplam 6 Ana Komut")
     embed.set_thumbnail(url=bot.user.avatar.url if bot.user.avatar else None)
     
     await ctx.send(embed=embed)
