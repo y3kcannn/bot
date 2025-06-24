@@ -59,6 +59,12 @@ def generate_key(key_type="normal"):
 # 1. !key [tip] [sayı] - Key üretme
 @bot.command(name='key')
 async def key_command(ctx, key_type="normal", count=1):
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     try:
         count = int(count)
         if count < 1 or count > 10:
@@ -100,6 +106,12 @@ async def key_command(ctx, key_type="normal", count=1):
 # 2. !keylist - Key listesi
 @bot.command(name='keylist')
 async def keylist_command(ctx):
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     result = await make_api_request("list-keys")
     
     if result.get("status") == "success":
@@ -166,6 +178,12 @@ async def keylist_command(ctx):
 # 3. !delete <key> - Key silme
 @bot.command(name='delete')
 async def delete_command(ctx, key=None):
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     if not key:
         await ctx.send("❌ Key belirtmelisiniz! Kullanım: `!delete <key>`")
         return
@@ -223,6 +241,12 @@ async def keyinfo_command(ctx, key=None):
 # 6. !ban <user> - Kullanıcı ban
 @bot.command(name='ban')
 async def ban_command(ctx, username=None):
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     if not username:
         await ctx.send("❌ Kullanıcı adı belirtmelisiniz! Kullanım: `!ban <username>`")
         return
@@ -248,33 +272,7 @@ async def unban_command(ctx, username=None):
     else:
         await ctx.send(f"❌ Hata: {result.get('message', 'Ban kaldırılamadı')}")
 
-# 8. !bansid <sid> - SID ban
-@bot.command(name='bansid')
-async def bansid_command(ctx, sid=None):
-    if not sid:
-        await ctx.send("❌ SID belirtmelisiniz! Kullanım: `!bansid <sid>`")
-        return
-    
-    result = await make_api_request("ban-sid", {"sid": sid})
-    
-    if result.get("status") == "success":
-        await ctx.send(f"🔨 SID banlandı: `{sid}`")
-    else:
-        await ctx.send(f"❌ Hata: {result.get('message', 'SID banlanamadı')}")
-
-# 9. !unbansid <sid> - SID unban
-@bot.command(name='unbansid')
-async def unbansid_command(ctx, sid=None):
-    if not sid:
-        await ctx.send("❌ SID belirtmelisiniz! Kullanım: `!unbansid <sid>`")
-        return
-    
-    result = await make_api_request("unban-sid", {"sid": sid})
-    
-    if result.get("status") == "success":
-        await ctx.send(f"✅ SID banı kaldırıldı: `{sid}`")
-    else:
-        await ctx.send(f"❌ Hata: {result.get('message', 'SID ban kaldırılamadı')}")
+# 8. (SID ban komutları kaldırıldı - !ban komutu otomatik SID banlar)
 
 # 10. !userinfo <user> - Kullanıcı durumu
 @bot.command(name='userinfo')
@@ -320,6 +318,12 @@ async def stats_command(ctx):
 # 12. !help - Yardım
 @bot.command(name='help')
 async def help_command(ctx):
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
     help_text = """🔰 **KEYLOGIN BOT KOMUTLARI**
 
 **🔑 Key İşlemleri:**
@@ -330,10 +334,8 @@ async def help_command(ctx):
 `!keyinfo <key>` - Key bilgisi
 
 **🔨 Ban İşlemleri:**
-`!ban <user>` - Kullanıcı banla
+`!ban <user>` - Kullanıcı ve SID banla
 `!unban <user>` - Kullanıcı ban kaldır
-`!bansid <sid>` - SID banla
-`!unbansid <sid>` - SID ban kaldır
 `!userinfo <user>` - Kullanıcı durumu
 
 **📊 Sistem:**
