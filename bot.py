@@ -685,7 +685,9 @@ async def show_help(ctx):
               "• `!ban unuser testuser` - Kullanıcı ban kaldır\n"
               "• `!ban ip 192.168.1.100` - IP banla\n"
               "• `!ban unip 192.168.1.100` - IP ban kaldır\n"
-              "• Aliases: `!b`, kısaltmalar: `u`, `uu`",
+              "• Aliases: `!b`, kısaltmalar: `u`, `uu`\n\n"
+              "`!checkban <username>` - Real-time ban kontrolü\n"
+              "• Aliases: `!cb`",
         inline=False
     )
     
@@ -716,13 +718,66 @@ async def show_help(ctx):
               "`!l` = Key listesi\n"
               "`!m del SPFR-1234-5678` = Key sil\n"
               "`!b u testuser` = Kullanıcı banla\n"
+              "`!cb testuser` = Ban kontrolü\n"
               "`!s` = İstatistikler",
         inline=False
     )
     
-    embed.set_footer(text="Keylogin Management Bot | Toplam 6 Ana Komut")
+    embed.set_footer(text="Keylogin Management Bot | 6 Ana Komut + Real-time Ban Kontrolü")
     embed.set_thumbnail(url=bot.user.avatar.url if bot.user.avatar else None)
     
+    await ctx.send(embed=embed)
+
+@bot.command(name='checkban', aliases=['cb'])
+async def check_ban_status(ctx, username=None):
+    """🔍 Real-time ban kontrolü - Kullanım: !checkban <username>"""
+    # Kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    if username is None:
+        embed = discord.Embed(
+            title="❌ Eksik Parametre",
+            description="**Kullanım:** `!checkban <username>`\n**Örnek:** `!checkban testuser`",
+            color=0xff0000
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    loading_msg = await ctx.send("⏳ Ban durumu kontrol ediliyor...")
+    
+    result = make_api_request('check-ban', 'POST', {'username': username})
+    
+    await loading_msg.delete()
+    
+    if result.get('status') == 'success':
+        embed = discord.Embed(
+            title="✅ Kullanıcı Temiz",
+            description=f"**Username:** `{username}`\n**Durum:** Banlanmamış",
+            color=0x00ff00
+        )
+        embed.add_field(name="📝 Bilgi", value="Bu kullanıcı sistemde banlı değil", inline=False)
+    elif result.get('status') == 'banned':
+        ban_type = result.get('ban_type', 'unknown')
+        ban_target = result.get('ban_target', 'unknown')
+        
+        embed = discord.Embed(
+            title="🚫 Kullanıcı Banlı",
+            description=f"**Username:** `{username}`\n**Durum:** Banlanmış",
+            color=0xff0000
+        )
+        embed.add_field(name="📝 Ban Detayı", value=f"**Tip:** {ban_type.upper()}\n**Hedef:** `{ban_target}`", inline=False)
+        embed.add_field(name="⚠️ Uyarı", value="Bu kullanıcı sistemde aktif olarak banlı", inline=False)
+    else:
+        embed = discord.Embed(
+            title="❌ Kontrol Başarısız",
+            description=f"**Hata:** {result.get('message', 'Bilinmeyen hata')}",
+            color=0xff0000
+        )
+    
+    embed.set_footer(text=f"Kontrol eden: {ctx.author}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
     await ctx.send(embed=embed)
 
 # Hata yakalama
