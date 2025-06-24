@@ -125,25 +125,70 @@ async def key_command(ctx, count=1):
         
         # Sonuçları göster
         if generated_keys:
+            embed = discord.Embed(
+                title="🔑 Key Oluşturuldu",
+                color=0x00ff00,  # Yeşil
+                description=f"**{len(generated_keys)} adet key başarıyla oluşturuldu**"
+            )
+            
+            # Key'leri embed field olarak ekle
             keys_text = "\n".join([f"`{key}`" for key in generated_keys])
-            await ctx.send(f"🔑 **{len(generated_keys)} adet key oluşturuldu:**\n{keys_text}")
+            embed.add_field(
+                name="📋 Key Listesi", 
+                value=keys_text,
+                inline=False
+            )
+            
+            # Bot profil resmi
+            if bot.user and bot.user.avatar:
+                embed.set_thumbnail(url=bot.user.avatar.url)
+            
+            # Footer
+            embed.set_footer(
+                text="Keylogin Key Management",
+                icon_url=bot.user.avatar.url if bot.user and bot.user.avatar else None
+            )
+            
+            message = await ctx.send(embed=embed)
+            # 10 saniye sonra bot mesajını sil
+            await asyncio.sleep(10)
+            try:
+                await message.delete()
+            except:
+                pass
         
         if failed_keys:
             if len(failed_keys) == 1:
-                await ctx.send(f"⚠️ 1 key oluşturulamadı. Sunucu yoğun, tekrar deneyin.")
+                message = await ctx.send(f"⚠️ 1 key oluşturulamadı. Sunucu yoğun, tekrar deneyin.")
             else:
-                await ctx.send(f"⚠️ {len(failed_keys)} key oluşturulamadı. Sunucu yoğun, tekrar deneyin.")
+                message = await ctx.send(f"⚠️ {len(failed_keys)} key oluşturulamadı. Sunucu yoğun, tekrar deneyin.")
+            # 10 saniye sonra sil
+            await asyncio.sleep(10)
+            try:
+                await message.delete()
+            except:
+                pass
             
     except ValueError:
-        await ctx.send("❌ Geçersiz sayı girdiniz!")
+        message = await ctx.send("❌ Geçersiz sayı girdiniz!")
+        await asyncio.sleep(10)
+        try:
+            await message.delete()
+        except:
+            pass
     except Exception as e:
         error_msg = str(e)
         if "too many requests" in error_msg.lower():
-            await ctx.send("⏳ Çok hızlı komut gönderiyorsunuz. Biraz bekleyin.")
+            message = await ctx.send("⏳ Çok hızlı komut gönderiyorsunuz. Biraz bekleyin.")
         elif "connection" in error_msg.lower():
-            await ctx.send("🔗 Sunucu bağlantı sorunu. Tekrar deneyin.")
+            message = await ctx.send("🔗 Sunucu bağlantı sorunu. Tekrar deneyin.")
         else:
-            await ctx.send("❌ Beklenmeyen hata oluştu. Tekrar deneyin.")
+            message = await ctx.send("❌ Beklenmeyen hata oluştu. Tekrar deneyin.")
+        await asyncio.sleep(10)
+        try:
+            await message.delete()
+        except:
+            pass
 
 # 2. !keylist - Key listesi
 @bot.command(name='keylist')
