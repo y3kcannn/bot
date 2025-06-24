@@ -8,7 +8,17 @@ import string
 import os
 
 # Bot token - Railway environment variables
-TOKEN = os.getenv('DISCORD_TOKEN') or os.getenv('BOT_TOKEN') or 'YOUR_BOT_TOKEN_HERE'
+TOKEN = os.getenv('DISCORD_TOKEN') or os.getenv('BOT_TOKEN')
+
+# Debug token durumu
+if not TOKEN:
+    print("❌ CRITICAL: Bot token bulunamadı!")
+    print("Environment variables kontrol ediliyor...")
+    print(f"DISCORD_TOKEN: {bool(os.getenv('DISCORD_TOKEN'))}")
+    print(f"BOT_TOKEN: {bool(os.getenv('BOT_TOKEN'))}")
+    exit(1)
+
+print(f"✅ Token bulundu: {TOKEN[:20]}...")  # İlk 20 karakterini göster
 
 # API ayarları
 API_URL = "https://midnightponywka.com"
@@ -336,13 +346,7 @@ async def help_command(ctx):
 
 # Bot'u çalıştır
 if __name__ == "__main__":
-    if TOKEN == 'YOUR_BOT_TOKEN_HERE':
-        print("❌ HATA: Bot token bulunamadı!")
-        print("Railway'de DISCORD_TOKEN veya BOT_TOKEN environment variable'ını ayarlayın.")
-        exit(1)
-    
     print("🚀 Keylogin Discord Bot Starting...")
-    print(f"🔑 Token Status: {'✅ Found' if TOKEN else '❌ Missing'}")
     print(f"🌐 API URL: {API_URL}")
     print("-" * 50)
     
@@ -350,4 +354,5 @@ if __name__ == "__main__":
         bot.run(TOKEN)
     except Exception as e:
         print(f"❌ HATA: {e}")
+        print("Token'ı kontrol edin veya yenileyin!")
         exit(1)
