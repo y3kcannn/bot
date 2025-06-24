@@ -5,6 +5,8 @@ import json
 import asyncio
 import datetime
 import os
+import random
+import string
 
 # Bot ayarları - Railway'den environment variable'ı al
 BOT_TOKEN = os.getenv('DISCORD_TOKEN')  # Railway'de DISCORD_TOKEN olarak kayıtlı
@@ -61,13 +63,225 @@ def make_api_request(action, method='GET', data=None):
     except Exception as e:
         return {"status": "error", "message": f"Unexpected error: {str(e)}"}
 
+def generate_key():
+    """Güzel format ile key üret: SPFR-XXXX-XXXX"""
+    # İlk segment: SPFR (Spoofer)
+    prefix = "SPFR"
+    
+    # İkinci segment: 4 karakter (büyük harf + rakam)
+    chars = string.ascii_uppercase + string.digits
+    segment1 = ''.join(random.choice(chars) for _ in range(4))
+    
+    # Üçüncü segment: 4 karakter (büyük harf + rakam)
+    segment2 = ''.join(random.choice(chars) for _ in range(4))
+    
+    # Final key formatı
+    key = f"{prefix}-{segment1}-{segment2}"
+    
+    return key
+
+def generate_premium_key():
+    """Premium key üret: SPFR-PREM-XXXX"""
+    prefix = "SPFR-PREM"
+    chars = string.ascii_uppercase + string.digits
+    segment = ''.join(random.choice(chars) for _ in range(4))
+    return f"{prefix}-{segment}"
+
+def generate_vip_key():
+    """VIP key üret: SPFR-VIP-XXXX"""
+    prefix = "SPFR-VIP"
+    chars = string.ascii_uppercase + string.digits
+    segment = ''.join(random.choice(chars) for _ in range(4))
+    return f"{prefix}-{segment}"
+
+@bot.command(name='key', aliases=['generate', 'genkey'])
+async def generate_key_command(ctx, key_type=None, count=None):
+    """
+    Otomatik key üretme - Kullanım: !key [type] [count]
+    Types: normal, premium, vip
+    Count: 1-10 arası
+    """
+    
+    # Parametreleri kontrol et
+    if count is None:
+        count = 1
+    else:
+        try:
+            count = int(count)
+            if count < 1 or count > 10:
+                embed = discord.Embed(
+                    title="❌ Geçersiz Sayı",
+                    description="Key sayısı 1-10 arasında olmalı!",
+                    color=0xff0000
+                )
+                await ctx.send(embed=embed)
+                return
+        except ValueError:
+            embed = discord.Embed(
+                title="❌ Geçersiz Format",
+                description="Key sayısı rakam olmalı! (1-10)",
+                color=0xff0000
+            )
+            await ctx.send(embed=embed)
+            return
+    
+    # Key tipini belirle
+    if key_type is None or key_type.lower() == "normal":
+        key_type_name = "Normal"
+        key_generator = generate_key
+        color = 0x0099ff
+        emoji = "🔑"
+    elif key_type.lower() in ["premium", "prem"]:
+        key_type_name = "Premium"
+        key_generator = generate_premium_key
+        color = 0xffd700
+        emoji = "💎"
+    elif key_type.lower() == "vip":
+        key_type_name = "VIP"
+        key_generator = generate_vip_key
+        color = 0xff6600
+        emoji = "👑"
+    else:
+        embed = discord.Embed(
+            title="❌ Geçersiz Key Tipi",
+            description="**Kullanılabilir tipler:**\n• `normal` - Standart key\n• `premium` - Premium key\n• `vip` - VIP key",
+            color=0xff0000
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    # Loading mesajı
+    loading_msg = await ctx.send(f"⏳ {count} adet {key_type_name} key üretiliyor...")
+    
+    # Key'leri üret ve sisteme ekle
+    generated_keys = []
+    failed_keys = []
+    
+    for i in range(count):
+        # Unique key üret (10 deneme)
+        for attempt in range(10):
+            new_key = key_generator()
+            
+            # Key'in sistemde olup olmadığını kontrol et
+            check_result = make_api_request('key-info', 'POST', {'key': new_key})
+            
+            if check_result.get('status') == 'error' and 'Invalid key' in check_result.get('message', ''):
+                # Key mevcut değil, kullanılabilir
+                add_result = make_api_request('add-key', 'POST', {'key': new_key})
+                
+                if add_result.get('status') == 'success':
+                    generated_keys.append(new_key)
+                    break
+                else:
+                    if attempt == 9:  # Son deneme
+                        failed_keys.append(f"Key eklenemedi: {add_result.get('message', 'Bilinmeyen hata')}")
+            else:
+                # Key zaten mevcut, yeni key dene
+                if attempt == 9:  # Son deneme
+                    failed_keys.append("Unique key üretilemedi")
+    
+    await loading_msg.delete()
+    
+    # Sonuçları göster
+    if generated_keys:
+        # Başarılı key'ler
+        embed = discord.Embed(
+            title=f"{emoji} {key_type_name} Key Üretimi Tamamlandı",
+            description=f"**{len(generated_keys)} adet key başarıyla üretildi ve sisteme eklendi!**",
+            color=color
+        )
+        
+        # Key'leri göster
+        key_list = []
+        for i, key in enumerate(generated_keys, 1):
+            key_list.append(f"`{i}.` `{key}`")
+        
+        # Key'leri sayfa sayfa göster (Discord limit)
+        keys_per_page = 8
+        if len(key_list) <= keys_per_page:
+            embed.add_field(
+                name="🔑 Üretilen Key'ler",
+                value='\n'.join(key_list),
+                inline=False
+            )
+        else:
+            # Çok key varsa ilk sayfayı göster
+            embed.add_field(
+                name="🔑 Üretilen Key'ler (İlk 8)",
+                value='\n'.join(key_list[:8]),
+                inline=False
+            )
+            if len(key_list) > 8:
+                embed.add_field(
+                    name="📋 Kalan Key'ler",
+                    value=f"Toplam {len(generated_keys)} key üretildi.\nTüm key'leri görmek için `!keylist` kullanın.",
+                    inline=False
+                )
+        
+        # Key formatı açıklaması
+        format_info = {
+            "Normal": "Format: `SPFR-XXXX-XXXX`",
+            "Premium": "Format: `SPFR-PREM-XXXX`",
+            "VIP": "Format: `SPFR-VIP-XXXX`"
+        }
+        
+        embed.add_field(
+            name="📝 Key Bilgileri",
+            value=f"{format_info[key_type_name]}\n• Durum: SID'ye bağlanmayı bekliyor\n• Kullanım: C++ uygulamasında kullanılabilir",
+            inline=False
+        )
+        
+        embed.set_footer(
+            text=f"Üreten: {ctx.author} | {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 
+            icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+        )
+        
+        await ctx.send(embed=embed)
+        
+        # Başarısız key'ler varsa ayrı mesaj
+        if failed_keys:
+            error_embed = discord.Embed(
+                title="⚠️ Kısmi Hata",
+                description=f"{len(failed_keys)} key üretilemedi:",
+                color=0xffa500
+            )
+            error_embed.add_field(
+                name="Hatalar",
+                value='\n'.join([f"• {error}" for error in failed_keys]),
+                inline=False
+            )
+            await ctx.send(embed=error_embed)
+    
+    else:
+        # Hiç key üretilemedi
+        embed = discord.Embed(
+            title="❌ Key Üretimi Başarısız",
+            description="Hiçbir key üretilemedi!",
+            color=0xff0000
+        )
+        
+        if failed_keys:
+            embed.add_field(
+                name="Hatalar",
+                value='\n'.join([f"• {error}" for error in failed_keys]),
+                inline=False
+            )
+        
+        embed.add_field(
+            name="💡 Çözüm Önerileri",
+            value="• Daha az key üretmeyi deneyin\n• Sunucu bağlantısını kontrol edin\n• Birkaç dakika sonra tekrar deneyin",
+            inline=False
+        )
+        
+        await ctx.send(embed=embed)
+
 @bot.command(name='addkey', aliases=['add'])
 async def add_key(ctx, key=None):
     """Key ekle - Kullanım: !addkey <key>"""
     if key is None:
         embed = discord.Embed(
             title="❌ Hatalı Kullanım",
-            description="**Kullanım:** `!addkey <key>`\n**Örnek:** `!addkey ABC123DEF456`",
+            description="**Kullanım:** `!addkey <key>`\n**Örnek:** `!addkey ABC123DEF456`\n\n**💡 İpucu:** Otomatik key üretmek için `!key` komutunu kullanın",
             color=0xff0000
         )
         await ctx.send(embed=embed)
@@ -94,7 +308,7 @@ async def add_key(ctx, key=None):
             description=f"**Hata:** {result.get('message', 'Bilinmeyen hata')}",
             color=0xff0000
         )
-        embed.add_field(name="💡 Çözüm Önerileri", value="• Key formatını kontrol edin\n• Key zaten mevcut olabilir\n• Sunucu bağlantısını kontrol edin", inline=False)
+        embed.add_field(name="💡 Çözüm Önerileri", value="• Key formatını kontrol edin\n• Key zaten mevcut olabilir\n• Sunucu bağlantısını kontrol edin\n• Otomatik key üretmek için `!key` kullanın", inline=False)
     
     await ctx.send(embed=embed)
 
@@ -196,6 +410,16 @@ async def list_keys(ctx):
                     bound = key_info['bound']
                     sid = key_info['sid']
                     
+                    # Key tipini belirle
+                    if key.startswith('SPFR-VIP-'):
+                        key_icon = "👑"
+                    elif key.startswith('SPFR-PREM-'):
+                        key_icon = "💎"
+                    elif key.startswith('SPFR-'):
+                        key_icon = "🔑"
+                    else:
+                        key_icon = "🗝️"
+                    
                     if bound:
                         status_icon = "🔒"
                         status_text = f"Bağlı (SID: `{sid[:8]}...`)"
@@ -203,7 +427,7 @@ async def list_keys(ctx):
                         status_icon = "🔓"
                         status_text = "Kullanılabilir"
                     
-                    key_list.append(f"{status_icon} `{key}` - {status_text}")
+                    key_list.append(f"{key_icon} `{key}` {status_icon} {status_text}")
                 
                 embed = discord.Embed(
                     title="📋 Key Listesi (SID Durumu)",
@@ -218,7 +442,7 @@ async def list_keys(ctx):
                     inline=False
                 )
                 
-                embed.set_footer(text=f"Sayfa {page + 1}/{total_pages} • 🔒 = SID'ye bağlı, 🔓 = Kullanılabilir")
+                embed.set_footer(text=f"Sayfa {page + 1}/{total_pages} • 🔑=Normal 💎=Premium 👑=VIP • 🔒=Bağlı 🔓=Kullanılabilir")
                 
                 await ctx.send(embed=embed)
         else:
@@ -227,7 +451,7 @@ async def list_keys(ctx):
                 description="Henüz hiç key eklenmemiş.",
                 color=0xffa500
             )
-            embed.add_field(name="💡 İpucu", value="Yeni key eklemek için `!addkey <key>` komutunu kullanın", inline=False)
+            embed.add_field(name="💡 İpucu", value="• Yeni key eklemek için `!addkey <key>` komutunu kullanın\n• Otomatik key üretmek için `!key` komutunu kullanın", inline=False)
             await ctx.send(embed=embed)
     else:
         embed = discord.Embed(
@@ -521,10 +745,20 @@ async def show_help(ctx):
         color=0x0099ff
     )
     
+    # Key üretimi
+    embed.add_field(
+        name="🎯 Key Üretimi",
+        value="`!key [type] [count]` - Otomatik key üret\n"
+              "• `!key` - 1 normal key\n"
+              "• `!key premium 5` - 5 premium key\n"
+              "• `!key vip 3` - 3 VIP key",
+        inline=False
+    )
+    
     # Key yönetimi
     embed.add_field(
         name="🔑 Key Yönetimi",
-        value="`!addkey <key>` - Yeni key ekle\n"
+        value="`!addkey <key>` - Manuel key ekle\n"
               "`!deletekey <key>` - Key'i sil\n"
               "`!keylist` - Tüm key'leri listele (SID durumu ile)\n"
               "`!testkey <key> [sid]` - Key'i SID ile test et",
@@ -556,16 +790,16 @@ async def show_help(ctx):
         inline=False
     )
     
-    # SID açıklaması
+    # Key formatları
     embed.add_field(
-        name="💡 SID Sistemi",
-        value="• Her key sadece bir SID'ye bağlanabilir\n"
-              "• Aynı key birden fazla kullanıcı tarafından kullanılamaz\n"
-              "• Key ilk kullanımda otomatik olarak SID'ye bağlanır",
+        name="🎨 Key Formatları",
+        value="• **Normal:** `SPFR-XXXX-XXXX` 🔑\n"
+              "• **Premium:** `SPFR-PREM-XXXX` 💎\n"
+              "• **VIP:** `SPFR-VIP-XXXX` 👑",
         inline=False
     )
     
-    embed.set_footer(text="Keylogin SID Management Bot v2.0")
+    embed.set_footer(text="Keylogin SID Management Bot v2.1")
     embed.set_thumbnail(url=bot.user.avatar.url if bot.user.avatar else None)
     
     await ctx.send(embed=embed)
