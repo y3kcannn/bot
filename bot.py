@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import logging
 from typing import Optional, List
 import math
+import aiohttp
 
 # Advanced Setup
 logging.basicConfig(
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 TOKEN = os.getenv("TOKEN")
-ADMIN_ROLE = os.getenv("ADMIN_ROLE", "Admin")
+ADMIN_ROLE = os.getenv("ADMIN_ROLE", "🔑")
 API_URL = os.getenv("API_URL")
 API_TOKEN = os.getenv("API_TOKEN")
 
@@ -43,25 +44,15 @@ class APIHandler:
     async def call(action: str, data: Optional[dict] = None) -> dict:
         """Async API request with better error handling"""
         try:
-            url = f"{API_URL}?api=1&token={API_TOKEN}&action={action}"
-            
-            # Use requests for now (can be upgraded to aiohttp later)
-            import requests
-            if data:
-                response = requests.post(url, data=data, timeout=10)
-            else:
-                response = requests.get(url, timeout=10)
-            return response.json()
-                        
-        except requests.exceptions.Timeout:
-            return {"error": "⏱️ Server timeout - Please try again"}
-        except requests.exceptions.ConnectionError:
-            return {"error": "🔌 Connection failed - Server may be down"}
-        except json.JSONDecodeError:
-            return {"error": "📄 Invalid server response"}
+            async with aiohttp.ClientSession() as session:
+                payload = {'action': action, 'token': API_TOKEN}
+                if data:
+                    payload.update(data)
+                
+                async with session.post(API_URL, json=payload) as response:
+                    return await response.json()
         except Exception as e:
-            logger.error(f"API Error: {e}")
-            return {"error": f"🚫 Request failed: {str(e)}"}
+            return {'error': f'API connection failed: {str(e)}'}
 
 # Auto-delete function
 async def auto_delete_interaction(interaction: discord.Interaction, delay: int = 60):
@@ -468,7 +459,7 @@ async def main_help(ctx):
         inline=False
     )
     
-    embed.set_footer(text="Midnight Keylogin System • Professional Discord Bot • !help is permanent")
+    embed.set_footer(text="Midnight Keylogin System • Professional Discord Bot")
     # Help command is permanent, no auto-delete
     await ctx.send(embed=embed)
 
