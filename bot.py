@@ -62,6 +62,14 @@ async def on_disconnect():
     if session:
         await session.close()
 
+@bot.event 
+async def on_command(ctx):
+    """Komut çalıştığında komut mesajını sil"""
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
 @bot.command(name='stats')
 async def stats(ctx):
     """API istatistiklerini gösterir"""
