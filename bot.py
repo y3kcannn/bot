@@ -106,10 +106,11 @@ async def stats(ctx):
         await ctx.send("❌ Bağlantı hatası")
 
 @bot.command(name='key')
-async def create_key(ctx, loader: str):
-    """Yeni key oluşturur ve DM ile gönderir (!key <loader>)"""
+async def create_key(ctx, discord_user: str):
+    """Yeni key oluşturur ve DM ile gönderir (!key @discordismi)"""
     try:
         owner_id = str(ctx.author.id)
+        loader = "spoofer"  # Default loader
         payload = generate_signature("create", owner_id, loader)
         
         async with session.post(f"{API_URL}?token={API_TOKEN}", 
@@ -121,6 +122,11 @@ async def create_key(ctx, loader: str):
             if "KEY_CREATED:" in result:
                 key = result.split(": ")[1]
                 
+                # Verify bilgileri oluştur
+                discord_id = str(ctx.author.id)
+                verify_code = f"VERIFY_{discord_id[-4:]}"
+                verify_url = f"https://midnightponywka.com/verify?discord_id={discord_id}&code={verify_code}"
+                
                 # Key'i DM ile gönder
                 dm_embed = discord.Embed(
                     title="🔑 Yeni Key Oluşturuldu",
@@ -129,17 +135,24 @@ async def create_key(ctx, loader: str):
                 dm_embed.add_field(name="🔑 Key", value=f"```{key}```", inline=False)
                 dm_embed.add_field(name="📁 Loader", value=loader, inline=True)
                 dm_embed.add_field(name="⏰ Geçerlilik", value="7 gün", inline=True)
-                dm_embed.add_field(name="👤 Sahibi", value=ctx.author.mention, inline=True)
-                dm_embed.set_footer(text="Bu key'i güvende tutun!")
+                dm_embed.add_field(name="👤 Hedef", value=discord_user, inline=True)
+                
+                # Verify bilgileri ekle
+                dm_embed.add_field(name="🔐 Verify Sayfası", value=f"[Buraya tıkla]({verify_url})", inline=False)
+                dm_embed.add_field(name="🆔 Discord ID", value=f"`{discord_id}`", inline=True)
+                dm_embed.add_field(name="🔢 Verify Kodu", value=f"`{verify_code}`", inline=True)
+                
+                dm_embed.set_footer(text="Key'i güvende tutun ve verify sayfasında kullanın!")
                 
                 # Kanal için onay mesajı
                 public_embed = discord.Embed(
                     title="✅ Key Oluşturuldu",
-                    description=f"**{ctx.author.mention}** için `{loader}` key'i oluşturuldu ve DM ile gönderildi.",
+                    description=f"**{discord_user}** için `{loader}` key'i oluşturuldu ve DM ile gönderildi.",
                     color=0x00ff00
                 )
                 public_embed.add_field(name="📁 Loader", value=loader, inline=True)
                 public_embed.add_field(name="⏰ Süre", value="7 gün", inline=True)
+                public_embed.add_field(name="🔐 Verify", value="DM'de link var", inline=True)
                 
                 try:
                     # Önce DM'e gönder
@@ -156,6 +169,7 @@ async def create_key(ctx, loader: str):
                     warning_embed.add_field(name="🔑 Key", value=f"```{key}```", inline=False)
                     warning_embed.add_field(name="📁 Loader", value=loader, inline=True)
                     warning_embed.add_field(name="⏰ Süre", value="7 gün", inline=True)
+                    warning_embed.add_field(name="🔐 Verify", value=f"[Link]({verify_url})", inline=True)
                     warning_embed.set_footer(text="DM'lerinizi açmanızı öneriyoruz!")
                     await ctx.send(embed=warning_embed)
                     
@@ -166,10 +180,12 @@ async def create_key(ctx, loader: str):
         await ctx.send("❌ Key oluşturulamadı")
 
 @bot.command(name='ban')
-async def ban_user(ctx, loader: str, hwid: str):
-    """Kullanıcı banlar (!ban <loader> <hwid>)"""
+async def ban_user(ctx, discord_user: str):
+    """Kullanıcı banlar (!ban @discordismi)"""
     try:
         owner_id = str(ctx.author.id)
+        loader = "spoofer"
+        hwid = discord_user  # Discord ismini HWID gibi kullan
         payload = generate_signature("ban", owner_id, loader, "", hwid)
         
         async with session.post(f"{API_URL}?token={API_TOKEN}", 
@@ -193,10 +209,12 @@ async def ban_user(ctx, loader: str, hwid: str):
         await ctx.send("❌ Ban işlemi başarısız")
 
 @bot.command(name='unban')
-async def unban_user(ctx, loader: str, hwid: str):
-    """Kullanıcı unbanlar (!unban <loader> <hwid>)"""
+async def unban_user(ctx, discord_user: str):
+    """Kullanıcı unbanlar (!unban @discordismi)"""
     try:
         owner_id = str(ctx.author.id)
+        loader = "spoofer"
+        hwid = discord_user
         payload = generate_signature("unban", owner_id, loader, "", hwid)
         
         async with session.post(f"{API_URL}?token={API_TOKEN}", 
@@ -220,11 +238,11 @@ async def unban_user(ctx, loader: str, hwid: str):
         await ctx.send("❌ Unban işlemi başarısız")
 
 @bot.command(name='reset')
-async def reset_key(ctx, loader: str, key: str):
-    """Key resetler (!reset <loader> <key>)"""
+async def reset_all_keys(ctx):
+    """Tüm keyleri siler (!reset)"""
     try:
         owner_id = str(ctx.author.id)
-        payload = generate_signature("reset", owner_id, loader, key)
+        payload = generate_signature("reset_all", owner_id)
         
         async with session.post(f"{API_URL}?token={API_TOKEN}", 
                                data=payload,
@@ -232,13 +250,12 @@ async def reset_key(ctx, loader: str, key: str):
             
             result = await response.text()
             
-            if "KEY_RESET" in result:
+            if "RESET_ALL_SUCCESS" in result:
                 embed = discord.Embed(
-                    title="♻️ Key Resetlendi",
-                    color=0xffff00
+                    title="🗑️ Tüm Keyler Silindi",
+                    description="Bütün keyler başarıyla silindi!",
+                    color=0xff0000
                 )
-                embed.add_field(name="Key", value=f"`{key}`", inline=True)
-                embed.add_field(name="Loader", value=loader, inline=True)
                 await ctx.send(embed=embed)
             else:
                 await ctx.send(f"❌ {result}")
@@ -246,38 +263,36 @@ async def reset_key(ctx, loader: str, key: str):
     except:
         await ctx.send("❌ Reset işlemi başarısız")
 
-@bot.command(name='verify')
-async def verify_key(ctx):
-    """Key doğrulama sayfası verir"""
+@bot.command(name='panic')
+async def panic_mode(ctx):
+    """Site ile tüm bağlantıyı keser (!panic)"""
     try:
-        discord_id = str(ctx.author.id)
-        verify_code = f"VERIFY_{discord_id[-4:]}"  # Son 4 haneli basit kod
+        owner_id = str(ctx.author.id)
+        payload = generate_signature("panic", owner_id)
         
-        # URL oluştur
-        verify_url = f"https://midnightponywka.com/verify.html?discord_id={discord_id}&code={verify_code}"
-        
-        embed = discord.Embed(
-            title="🔐 Key Doğrulama",
-            color=0x00ff00
-        )
-        
-        embed.add_field(name="🆔 Discord ID", value=f"`{discord_id}`", inline=False)
-        embed.add_field(name="🔢 Doğrulama Kodu", value=f"`{verify_code}`", inline=False)
-        embed.add_field(name="🌐 Doğrulama Sayfası", value=f"[Buraya tıkla]({verify_url})", inline=False)
-        
-        embed.set_footer(text="Bu bilgileri verify sayfasında kullanın")
-        
-        # Özel mesaj gönder
-        try:
-            await ctx.author.send(embed=embed)
-            await ctx.send("✅ Doğrulama bilgileri özel mesajınıza gönderildi!")
-        except:
-            await ctx.send(embed=embed)
+        async with session.post(f"{API_URL}?token={API_TOKEN}", 
+                               data=payload,
+                               headers={'User-Agent': 'DiscordBot'}) as response:
             
+            result = await response.text()
+            
+            if "PANIC_MODE_ENABLED" in result:
+                embed = discord.Embed(
+                    title="🚨 PANIC MODE AKTIF",
+                    description="Site tüm istekleri reddediyor!\nLoader bağlantıları kesildi.",
+                    color=0xff0000
+                )
+                embed.add_field(name="⚠️ Uyarı", value="Bu işlem geri alınamaz!", inline=False)
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send(f"❌ {result}")
+                
     except:
-        await ctx.send("❌ Verify linki oluşturulamadı")
+        await ctx.send("❌ Panic işlemi başarısız")
 
-@bot.command(name='list')
+
+
+@bot.command(name='keys')
 async def list_keys(ctx):
     """Keylerini listeler"""
     try:
@@ -342,15 +357,15 @@ async def help_command(ctx):
     )
     
     embed.add_field(name="📊 !stats", value="İstatistikler", inline=True)
-    embed.add_field(name="🔑 !key <loader>", value="Yeni key oluştur", inline=True)
-    embed.add_field(name="🔐 !verify", value="Key doğrulama sayfası", inline=True)
-    embed.add_field(name="📝 !list", value="Keylerini listele", inline=True)
-    embed.add_field(name="♻️ !reset <loader> <key>", value="Key resetle", inline=True)
-    embed.add_field(name="🚫 !ban <loader> <hwid>", value="Kullanıcı banla", inline=True)
-    embed.add_field(name="✅ !unban <loader> <hwid>", value="Kullanıcı unbanla", inline=True)
+    embed.add_field(name="🔑 !key @discordismi", value="Key oluştur + verify link", inline=True)
+    embed.add_field(name="📝 !keys", value="Keylerini listele", inline=True)
+    embed.add_field(name="🗑️ !reset", value="Tüm keyleri sil", inline=True)
+    embed.add_field(name="🚫 !ban @discordismi", value="Kullanıcı banla", inline=True)
+    embed.add_field(name="✅ !unban @discordismi", value="Kullanıcı unbanla", inline=True)
+    embed.add_field(name="🚨 !panic", value="Site bağlantısını kes", inline=True)
     embed.add_field(name="🏓 !ping", value="Ping kontrolü", inline=True)
     
-    embed.set_footer(text="Örnek: !key TestLoader")
+    embed.set_footer(text="Örnek: !key @kullanici (Key + verify linki verir)")
     
     await ctx.send(embed=embed)
 
