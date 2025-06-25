@@ -99,7 +99,7 @@ async def stats(ctx):
 
 @bot.command(name='key')
 async def create_key(ctx, loader: str):
-    """Yeni key oluşturur (!key <loader>)"""
+    """Yeni key oluşturur ve DM ile gönderir (!key <loader>)"""
     try:
         owner_id = str(ctx.author.id)
         payload = generate_signature("create", owner_id, loader)
@@ -112,14 +112,45 @@ async def create_key(ctx, loader: str):
             
             if "KEY_CREATED:" in result:
                 key = result.split(": ")[1]
-                embed = discord.Embed(
+                
+                # Key'i DM ile gönder
+                dm_embed = discord.Embed(
                     title="🔑 Yeni Key Oluşturuldu",
                     color=0x00ff00
                 )
-                embed.add_field(name="Key", value=f"`{key}`", inline=False)
-                embed.add_field(name="Loader", value=loader, inline=True)
-                embed.add_field(name="Süre", value="7 gün", inline=True)
-                await ctx.send(embed=embed)
+                dm_embed.add_field(name="🔑 Key", value=f"```{key}```", inline=False)
+                dm_embed.add_field(name="📁 Loader", value=loader, inline=True)
+                dm_embed.add_field(name="⏰ Geçerlilik", value="7 gün", inline=True)
+                dm_embed.add_field(name="👤 Sahibi", value=ctx.author.mention, inline=True)
+                dm_embed.set_footer(text="Bu key'i güvende tutun!")
+                
+                # Kanal için onay mesajı
+                public_embed = discord.Embed(
+                    title="✅ Key Oluşturuldu",
+                    description=f"**{ctx.author.mention}** için `{loader}` key'i oluşturuldu ve DM ile gönderildi.",
+                    color=0x00ff00
+                )
+                public_embed.add_field(name="📁 Loader", value=loader, inline=True)
+                public_embed.add_field(name="⏰ Süre", value="7 gün", inline=True)
+                
+                try:
+                    # Önce DM'e gönder
+                    await ctx.author.send(embed=dm_embed)
+                    # Sonra kanala onay mesajı
+                    await ctx.send(embed=public_embed)
+                except discord.Forbidden:
+                    # DM gönderilemezse kanala gönder ama uyarı ver
+                    warning_embed = discord.Embed(
+                        title="⚠️ DM Gönderilemedi",
+                        description="Key oluşturuldu ama DM'iniz kapalı. Key'iniz aşağıda:",
+                        color=0xffaa00
+                    )
+                    warning_embed.add_field(name="🔑 Key", value=f"```{key}```", inline=False)
+                    warning_embed.add_field(name="📁 Loader", value=loader, inline=True)
+                    warning_embed.add_field(name="⏰ Süre", value="7 gün", inline=True)
+                    warning_embed.set_footer(text="DM'lerinizi açmanızı öneriyoruz!")
+                    await ctx.send(embed=warning_embed)
+                    
             else:
                 await ctx.send(f"❌ {result}")
                 
