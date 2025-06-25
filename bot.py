@@ -6,12 +6,16 @@ import time
 import hmac
 import hashlib
 import uuid
+from dotenv import load_dotenv
 
-# Sabit tanımlar (geçici olarak gömülü)
-TOKEN = "YOUR_DISCORD_BOT_TOKEN"
+# Ortam değişkenlerini yükle
+load_dotenv()
+
+# Ortam değişkenlerinden gizli verileri al
+TOKEN = os.environ.get("DISCORD_TOKEN")
 API_URL = "https://midnightponywka.com/api.php"
-API_TOKEN = "MIDNIGHT_API_SECRET_2024"
-HMAC_SECRET = "MIDNIGHT_HMAC_SECRET_KEY"
+API_TOKEN = os.environ.get("API_TOKEN")
+HMAC_SECRET = os.environ.get("HMAC_SECRET")
 
 intents = discord.Intents.default()
 intents.message_content = True
