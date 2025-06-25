@@ -84,16 +84,15 @@ async def stats(ctx):
                     data = json.loads(await response.text())
                     
                     embed = discord.Embed(
-                        title="📊 Midnight Auth",
+                        title="📊 İstatistikler",
+                        description=f"""🔑 **Toplam:** {data.get('total_keys', 0)}
+✅ **Kullanılan:** {data.get('used_keys', 0)}
+🟢 **Aktif:** {data.get('active_keys', 0)}
+🚫 **Ban:** {data.get('banned_users', 0)}
+📡 **Status:** Online
+⏰ **Zaman:** {data.get('server_time', 'Bilinmiyor')[:19]}""",
                         color=0x2f3136
                     )
-                    
-                    embed.add_field(name="🔑 Toplam", value=data.get('total_keys', 0), inline=True)
-                    embed.add_field(name="✅ Kullanılan", value=data.get('used_keys', 0), inline=True)
-                    embed.add_field(name="🟢 Aktif", value=data.get('active_keys', 0), inline=True)
-                    embed.add_field(name="🚫 Ban", value=data.get('banned_users', 0), inline=True)
-                    embed.add_field(name="⏰ Zaman", value=data.get('server_time', 'Bilinmiyor')[:19], inline=True)
-                    embed.add_field(name="📡 Status", value="🟢 Online", inline=True)
                     
                     await ctx.send(embed=embed)
                     
@@ -312,21 +311,21 @@ async def list_keys(ctx):
                         await ctx.send("📝 Hiç key bulunamadı")
                         return
                     
+                    key_list = []
+                    for i, key_data in enumerate(keys[:15], 1):  # İlk 15 key
+                        status = "🔴" if key_data['used'] else "🟢"
+                        key_short = key_data['key'][:12] + "..."
+                        expire_date = key_data.get('expires_at', 'Belirsiz')[:10]
+                        key_list.append(f"`{i:02d}.` {status} `{key_short}` - {expire_date}")
+                    
                     embed = discord.Embed(
                         title="📝 Keyler",
+                        description="\n".join(key_list),
                         color=0x2f3136
                     )
                     
-                    for key_data in keys[:10]:  # İlk 10 key
-                        status = "🔴 Kullanıldı" if key_data['used'] else "🟢 Aktif"
-                        embed.add_field(
-                            name=f"🔑 {key_data['key'][:8]}...",
-                            value=f"{status}\n**Loader:** {key_data['loader']}\n**Süre:** {key_data.get('expires_at', 'Belirsiz')[:10]}",
-                            inline=True
-                        )
-                    
-                    if len(keys) > 10:
-                        embed.set_footer(text=f"İlk 10 key gösteriliyor (Toplam: {len(keys)})")
+                    if len(keys) > 15:
+                        embed.set_footer(text=f"İlk 15 key gösteriliyor (Toplam: {len(keys)})")
                     
                     await ctx.send(embed=embed)
                     
@@ -337,6 +336,51 @@ async def list_keys(ctx):
                 
     except:
         await ctx.send("❌ Liste işlemi başarısız")
+
+@bot.command(name='banlist')
+async def ban_list(ctx):
+    """Banlı kullanıcıları listeler"""
+    try:
+        owner_id = str(ctx.author.id)
+        payload = generate_signature("banlist", owner_id)
+        
+        async with session.post(f"{API_URL}?token={API_TOKEN}", 
+                               data=payload,
+                               headers={'User-Agent': 'DiscordBot'}) as response:
+            
+            if response.status == 200:
+                try:
+                    import json
+                    bans = json.loads(await response.text())
+                    
+                    if not bans:
+                        await ctx.send("📋 Hiç banlı kullanıcı yok")
+                        return
+                    
+                    ban_list = []
+                    for i, ban_data in enumerate(bans[:20], 1):  # İlk 20 ban
+                        hwid_short = ban_data['hwid'][:16] + "..."
+                        ban_date = ban_data.get('banned_at', 'Bilinmiyor')[:10]
+                        ban_list.append(f"`{i:02d}.` 🚫 `{hwid_short}` - {ban_date}")
+                    
+                    embed = discord.Embed(
+                        title="📋 Banlı Kullanıcılar",
+                        description="\n".join(ban_list),
+                        color=0xff0000
+                    )
+                    
+                    if len(bans) > 20:
+                        embed.set_footer(text=f"İlk 20 ban gösteriliyor (Toplam: {len(bans)})")
+                    
+                    await ctx.send(embed=embed)
+                    
+                except:
+                    await ctx.send("❌ Veri hatası")
+            else:
+                await ctx.send("❌ Ban listesi alınamadı")
+                
+    except:
+        await ctx.send("❌ Ban listesi işlemi başarısız")
 
 @bot.command(name='ping')
 async def ping(ctx):
@@ -352,20 +396,18 @@ async def ping(ctx):
 async def help_command(ctx):
     """Komutları gösterir"""
     embed = discord.Embed(
-        title="🤖 Midnight Auth Komutları",
+        title="🤖 Komutlar",
+        description="""📊 `!stats` - İstatistikler
+🔑 `!key @user` - Key oluştur
+📝 `!keys` - Keylerini listele
+📋 `!banlist` - Banlı kullanıcılar
+🗑️ `!reset` - Tüm keyleri sil
+🚫 `!ban @user` - Kullanıcı banla
+✅ `!unban @user` - Kullanıcı unbanla
+🚨 `!panic` - Site bağlantısını kes
+🏓 `!ping` - Ping kontrolü""",
         color=0x2f3136
     )
-    
-    embed.add_field(name="📊 !stats", value="İstatistikler", inline=True)
-    embed.add_field(name="🔑 !key @discordismi", value="Key oluştur + verify link", inline=True)
-    embed.add_field(name="📝 !keys", value="Keylerini listele", inline=True)
-    embed.add_field(name="🗑️ !reset", value="Tüm keyleri sil", inline=True)
-    embed.add_field(name="🚫 !ban @discordismi", value="Kullanıcı banla", inline=True)
-    embed.add_field(name="✅ !unban @discordismi", value="Kullanıcı unbanla", inline=True)
-    embed.add_field(name="🚨 !panic", value="Site bağlantısını kes", inline=True)
-    embed.add_field(name="🏓 !ping", value="Ping kontrolü", inline=True)
-    
-    embed.set_footer(text="Örnek: !key @kullanici (Key + verify linki verir)")
     
     await ctx.send(embed=embed)
 
