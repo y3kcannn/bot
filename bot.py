@@ -7,625 +7,271 @@ import asyncio
 from datetime import datetime, timezone
 import logging
 
-# Logging setup
-logging.basicConfig(level=logging.INFO)
+# Setup
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
-# Bot Configuration
+# Config
 TOKEN = os.getenv("TOKEN")
-GUILD_ID = 1234567890  # Your Discord server ID
 ADMIN_ROLE = os.getenv("ADMIN_ROLE", "Admin")
 API_URL = os.getenv("API_URL")
 API_TOKEN = os.getenv("API_TOKEN")
 
-# Bot setup
+# Bot
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
-
-# Remove default help command
 bot.remove_command('help')
 
-def make_api_request(action, data=None):
-    """Make API request to the server with improved error handling"""
+def api_call(action, data=None):
+    """Simple API request"""
     try:
         url = f"{API_URL}?api=1&token={API_TOKEN}&action={action}"
-        
-        if data:
-            response = requests.post(url, data=data, timeout=10)
-        else:
-            response = requests.get(url, timeout=10)
-        
-        # Check if response is JSON
-        try:
-            return response.json()
-        except json.JSONDecodeError:
-            logger.error(f"Invalid JSON response: {response.text}")
-            return {"error": "Invalid server response"}
-            
+        response = requests.post(url, data=data, timeout=8) if data else requests.get(url, timeout=8)
+        return response.json()
     except requests.exceptions.Timeout:
-        return {"error": "Server timeout - try again later"}
+        return {"error": "Server timeout"}
     except requests.exceptions.ConnectionError:
-        return {"error": "Connection error - server might be down"}
+        return {"error": "Connection failed"}
+    except json.JSONDecodeError:
+        return {"error": "Invalid response"}
     except Exception as e:
-        logger.error(f"API Error: {str(e)}")
-        return {"error": f"API request failed: {str(e)}"}
+        return {"error": str(e)}
 
-def has_admin_role():
-    """Check if user has admin role"""
+def is_admin():
+    """Admin check"""
     def predicate(ctx):
         return any(role.name == ADMIN_ROLE for role in ctx.author.roles)
     return commands.check(predicate)
 
-def create_embed(title, description=None, color=0x00ff00):
-    """Create a beautiful embed with bot profile"""
-    embed = discord.Embed(
-        title=title,
-        description=description,
-        color=color,
-        timestamp=datetime.now(timezone.utc)
-    )
-    embed.set_footer(
-        text="Keylogin Management System",
-        icon_url=bot.user.avatar.url if bot.user.avatar else None
-    )
-    embed.set_thumbnail(url=bot.user.avatar.url if bot.user.avatar else None)
-    return embed
+def embed(title, desc=None, color=0x00ff00):
+    """Clean embed"""
+    e = discord.Embed(title=title, description=desc, color=color, timestamp=datetime.now(timezone.utc))
+    e.set_footer(text="Keylogin System")
+    return e
 
-async def auto_delete_message(message, delay=6):
-    """Auto delete message after specified delay"""
-    await asyncio.sleep(delay)
-    try:
-        await message.delete()
-    except:
-        pass
-
-async def safe_delete_user_message(ctx):
-    """Safely delete user's command message"""
+async def cleanup(ctx, msg=None, delay=5):
+    """Auto cleanup"""
     try:
         await ctx.message.delete()
+        if msg:
+            await asyncio.sleep(delay)
+            await msg.delete()
     except:
         pass
 
 @bot.event
 async def on_ready():
-    logger.info(f'🚀 {bot.user} is online and ready!')
-    logger.info(f'📊 Connected to {len(bot.guilds)} servers')
-    
-    # Set bot status
-    await bot.change_presence(
-        status=discord.Status.online,
-        activity=discord.Game(name="🔐 Keylogin Management")
-    )
+    await bot.change_presence(activity=discord.Game(name="🔐 Keylogin"))
+    logger.info(f'Bot ready: {bot.user}')
 
-@bot.command(name='genkey')
-@has_admin_role()
-async def generate_key(ctx):
-    """Generate a new license key"""
-    await safe_delete_user_message(ctx)
-    
-    # Create loading embed
-    loading_embed = create_embed(
-        "🔄 Key Oluşturuluyor...",
-        "Lütfen bekleyin, yeni lisans anahtarı oluşturuluyor.",
-        0xffff00
-    )
-    msg = await ctx.send(embed=loading_embed)
-    
-    # Generate key via API
-    result = make_api_request('generate-key')
+@bot.command(name='key')
+@is_admin()
+async def gen_key(ctx):
+    """Generate new key"""
+    result = api_call('generate-key')
     
     if 'error' in result:
-        error_embed = create_embed(
-            "❌ Hata Oluştu",
-            f"**Hata:** {result['error']}",
-            0xff0000
-        )
-        await msg.edit(embed=error_embed)
+        e = embed("❌ Error", result['error'], 0xff0000)
     else:
-        # Success embed
-        success_embed = create_embed(
-            "✅ Key Başarıyla Oluşturuldu",
-            f"**🔑 Yeni Key:** `{result.get('key', 'N/A')}`\n**📅 Oluşturulma:** {result.get('created', 'N/A')}\n**👤 Oluşturan:** {ctx.author.mention}",
-            0x00ff00
-        )
-        success_embed.add_field(
-            name="📋 Bilgi", 
-            value="Bu key'i güvenli bir yerde saklayın!", 
-            inline=False
-        )
-        await msg.edit(embed=success_embed)
-        logger.info(f"🔑 Key generated by {ctx.author}: {result.get('key', 'N/A')}")
+        e = embed("✅ Key Generated", f"**Key:** `{result.get('key', 'N/A')}`")
     
-    # Auto delete after 6 seconds
-    asyncio.create_task(auto_delete_message(msg))
+    msg = await ctx.send(embed=e)
+    await cleanup(ctx, msg)
 
 @bot.command(name='ban')
-@has_admin_role()
+@is_admin()
 async def ban_user(ctx, username=None, ip=None):
-    """Ban a user by username and/or IP"""
-    await safe_delete_user_message(ctx)
-    
+    """Ban user/ip"""
     if not username and not ip:
-        error_embed = create_embed(
-            "❌ Hatalı Kullanım",
-            "**Kullanım:** `!ban <kullanıcı_adı> [ip]`\n**Örnek:** `!ban TestUser 192.168.1.1`",
-            0xff0000
-        )
-        msg = await ctx.send(embed=error_embed)
-        asyncio.create_task(auto_delete_message(msg))
+        e = embed("❌ Usage", "`!ban <username> [ip]`", 0xff0000)
+        msg = await ctx.send(embed=e)
+        await cleanup(ctx, msg)
         return
     
-    ban_data = {}
-    if username:
-        ban_data['username'] = username
-    if ip:
-        ban_data['ip'] = ip
+    data = {}
+    if username: data['username'] = username
+    if ip: data['ip'] = ip
     
-    # Create loading embed
-    loading_embed = create_embed(
-        "🔄 Kullanıcı Banlanıyor...",
-        f"**👤 Kullanıcı:** {username or 'Belirtilmedi'}\n**🌐 IP:** {ip or 'Belirtilmedi'}",
-        0xffff00
-    )
-    msg = await ctx.send(embed=loading_embed)
-    
-    # Ban via API
-    result = make_api_request('ban-user', ban_data)
+    result = api_call('ban-user', data)
     
     if 'error' in result:
-        error_embed = create_embed(
-            "❌ Ban Hatası",
-            f"**Hata:** {result['error']}",
-            0xff0000
-        )
-        await msg.edit(embed=error_embed)
+        e = embed("❌ Ban Failed", result['error'], 0xff0000)
     else:
-        # Success embed
-        success_embed = create_embed(
-            "🚫 Kullanıcı Başarıyla Banlandı",
-            f"**👤 Kullanıcı:** `{username or 'Belirtilmedi'}`\n**🌐 IP:** `{ip or 'Belirtilmedi'}`\n**👮 Banleyen:** {ctx.author.mention}",
-            0xff6600
-        )
-        success_embed.add_field(
-            name="⚠️ Uyarı", 
-            value="Bu kullanıcı artık sisteme erişemeyecek!", 
-            inline=False
-        )
-        await msg.edit(embed=success_embed)
-        logger.info(f"🔨 User banned by {ctx.author}: {username} / {ip}")
+        e = embed("🚫 Banned", f"User: `{username or 'N/A'}`\nIP: `{ip or 'N/A'}`")
     
-    # Auto delete after 6 seconds
-    asyncio.create_task(auto_delete_message(msg))
+    msg = await ctx.send(embed=e)
+    await cleanup(ctx, msg)
 
 @bot.command(name='unban')
-@has_admin_role()
+@is_admin()
 async def unban_user(ctx, username=None, ip=None):
-    """Unban a user by username and/or IP"""
-    await safe_delete_user_message(ctx)
-    
+    """Remove ban"""
     if not username and not ip:
-        error_embed = create_embed(
-            "❌ Hatalı Kullanım",
-            "**Kullanım:** `!unban <kullanıcı_adı> [ip]`\n**Örnek:** `!unban TestUser`",
-            0xff0000
-        )
-        msg = await ctx.send(embed=error_embed)
-        asyncio.create_task(auto_delete_message(msg))
+        e = embed("❌ Usage", "`!unban <username> [ip]`", 0xff0000)
+        msg = await ctx.send(embed=e)
+        await cleanup(ctx, msg)
         return
     
-    unban_data = {}
-    if username:
-        unban_data['username'] = username
-    if ip:
-        unban_data['ip'] = ip
+    data = {}
+    if username: data['username'] = username
+    if ip: data['ip'] = ip
     
-    # Create loading embed
-    loading_embed = create_embed(
-        "🔄 Ban Kaldırılıyor...",
-        f"**👤 Kullanıcı:** {username or 'Belirtilmedi'}\n**🌐 IP:** {ip or 'Belirtilmedi'}",
-        0xffff00
-    )
-    msg = await ctx.send(embed=loading_embed)
-    
-    # Unban via API
-    result = make_api_request('unban-user', unban_data)
+    result = api_call('unban-user', data)
     
     if 'error' in result:
-        error_embed = create_embed(
-            "❌ Unban Hatası",
-            f"**Hata:** {result['error']}",
-            0xff0000
-        )
-        await msg.edit(embed=error_embed)
+        e = embed("❌ Unban Failed", result['error'], 0xff0000)
     else:
-        # Success embed
-        success_embed = create_embed(
-            "✅ Ban Başarıyla Kaldırıldı",
-            f"**👤 Kullanıcı:** `{username or 'Belirtilmedi'}`\n**🌐 IP:** `{ip or 'Belirtilmedi'}`\n**👮 İşlemi Yapan:** {ctx.author.mention}",
-            0x00ff00
-        )
-        success_embed.add_field(
-            name="ℹ️ Bilgi", 
-            value="Kullanıcı artık sisteme tekrar erişebilir.", 
-            inline=False
-        )
-        await msg.edit(embed=success_embed)
-        logger.info(f"✅ User unbanned by {ctx.author}: {username} / {ip}")
+        e = embed("✅ Unbanned", f"User: `{username or 'N/A'}`\nIP: `{ip or 'N/A'}`")
     
-    # Auto delete after 6 seconds
-    asyncio.create_task(auto_delete_message(msg))
+    msg = await ctx.send(embed=e)
+    await cleanup(ctx, msg)
 
-@bot.command(name='checkban')
-@has_admin_role()
+@bot.command(name='check')
+@is_admin()
 async def check_ban(ctx, username=None, ip=None):
-    """Check if a user is banned"""
-    await safe_delete_user_message(ctx)
-    
+    """Check ban status"""
     if not username and not ip:
-        error_embed = create_embed(
-            "❌ Hatalı Kullanım",
-            "**Kullanım:** `!checkban <kullanıcı_adı> [ip]`\n**Örnek:** `!checkban TestUser`",
-            0xff0000
-        )
-        msg = await ctx.send(embed=error_embed)
-        asyncio.create_task(auto_delete_message(msg))
+        e = embed("❌ Usage", "`!check <username> [ip]`", 0xff0000)
+        msg = await ctx.send(embed=e)
+        await cleanup(ctx, msg)
         return
     
-    # Prepare check data
-    check_data = {}
-    if username:
-        check_data['username'] = username
-    if ip:
-        check_data['ip'] = ip
+    data = {}
+    if username: data['username'] = username
+    if ip: data['ip'] = ip
     
-    # Check via API
-    result = make_api_request('check-ban', check_data)
+    result = api_call('check-ban', data)
     
     if 'error' in result:
-        error_embed = create_embed(
-            "❌ Kontrol Hatası",
-            f"**Hata:** {result['error']}",
-            0xff0000
-        )
-        msg = await ctx.send(embed=error_embed)
+        e = embed("❌ Check Failed", result['error'], 0xff0000)
+    elif result.get('banned'):
+        e = embed("🚫 BANNED", f"User: `{username or 'N/A'}`\nIP: `{ip or 'N/A'}`", 0xff0000)
     else:
-        # Display result
-        if result.get('banned'):
-            banned_embed = create_embed(
-                "🚫 KULLANICI BANLI",
-                f"**👤 Kullanıcı:** `{username or 'Belirtilmedi'}`\n**🌐 IP:** `{ip or 'Belirtilmedi'}`\n**🔍 Kontrol Eden:** {ctx.author.mention}",
-                0xff0000
-            )
-            banned_embed.add_field(
-                name="📊 Durum", 
-                value="Bu kullanıcı sistemden banlanmış!", 
-                inline=False
-            )
-            msg = await ctx.send(embed=banned_embed)
-        else:
-            clean_embed = create_embed(
-                "✅ KULLANICI TEMİZ",
-                f"**👤 Kullanıcı:** `{username or 'Belirtilmedi'}`\n**🌐 IP:** `{ip or 'Belirtilmedi'}`\n**🔍 Kontrol Eden:** {ctx.author.mention}",
-                0x00ff00
-            )
-            clean_embed.add_field(
-                name="📊 Durum", 
-                value="Bu kullanıcı banlanmamış ve sisteme erişebilir.", 
-                inline=False
-            )
-            msg = await ctx.send(embed=clean_embed)
+        e = embed("✅ CLEAN", f"User: `{username or 'N/A'}`\nIP: `{ip or 'N/A'}`")
     
-    asyncio.create_task(auto_delete_message(msg))
+    msg = await ctx.send(embed=e)
+    await cleanup(ctx, msg)
 
 @bot.command(name='stats')
-@has_admin_role()
+@is_admin()
 async def show_stats(ctx):
-    """Show system statistics"""
-    await safe_delete_user_message(ctx)
-    
-    result = make_api_request('stats')
+    """System stats"""
+    result = api_call('stats')
     
     if 'error' in result:
-        error_embed = create_embed(
-            "❌ İstatistik Hatası",
-            f"**Hata:** {result['error']}",
-            0xff0000
-        )
-        msg = await ctx.send(embed=error_embed)
+        e = embed("❌ Stats Error", result['error'], 0xff0000)
     else:
-        stats_embed = create_embed(
-            "📊 Sistem İstatistikleri",
-            f"**🔍 Talep Eden:** {ctx.author.mention}\n**⏰ Güncelleme:** <t:{int(__import__('time').time())}:R>",
-            0x0099ff
-        )
+        total = int(result.get('total_keys', 0))
+        used = int(result.get('used_keys', 0))
+        banned_users = int(result.get('banned_users', 0))
+        banned_ips = int(result.get('banned_ips', 0))
         
-        # Key statistics
-        stats_embed.add_field(
-            name="🔑 Lisans Durumu",
-            value=f"```yaml\nToplam Keys : {result.get('total_keys', 0):>3}\nKullanılmış : {result.get('used_keys', 0):>3}\nMevcut     : {result.get('available_keys', 0):>3}```",
-            inline=True
-        )
-        
-        # Security statistics
-        stats_embed.add_field(
-            name="🚫 Güvenlik Durumu", 
-            value=f"```yaml\nBanli User : {result.get('banned_users', 0):>3}\nBanli IP   : {result.get('banned_ips', 0):>3}\nToplam Ban : {result.get('banned_users', 0) + result.get('banned_ips', 0):>3}```",
-            inline=True
-        )
-        
-        # Activity statistics
-        total_attempts = result.get('total_access_attempts', 0)
-        total_keys = result.get('total_keys', 1)
-        used_keys = result.get('used_keys', 0)
-        
-        activity_percentage = min(100, (total_attempts / max(1, total_keys)) * 100)
-        key_usage_percentage = (used_keys / max(1, total_keys)) * 100
-        
-        stats_embed.add_field(name="\u200b", value="\u200b", inline=False)
-        stats_embed.add_field(
-            name="📈 Aktivite Analizi",
-            value=f"```yaml\nErişim Denemeleri    : {total_attempts:>5}\nKey Kullanım Oranı   : %{key_usage_percentage:.1f}\nSistem Aktivitesi    : %{activity_percentage:.1f}\nGüvenlik Seviyesi    : {'🟢 Yüksek' if result.get('banned_users', 0) + result.get('banned_ips', 0) > 0 else '🟡 Normal'}```",
-            inline=False
-        )
-        
-        msg = await ctx.send(embed=stats_embed)
+        stats_text = f"""```
+Keys: {used}/{total} ({(used/max(1,total)*100):.1f}%)
+Bans: {banned_users + banned_ips} total
+```"""
+        e = embed("📊 Stats", stats_text, 0x0099ff)
     
-    asyncio.create_task(auto_delete_message(msg))
+    msg = await ctx.send(embed=e)
+    await cleanup(ctx, msg)
 
 @bot.command(name='version')
-@has_admin_role()
-async def update_version(ctx, new_version=None):
-    """Version kontrolü veya güncelleme"""
-    await safe_delete_user_message(ctx)
-    
-    if new_version is None:
-        # Show current version
-        result = make_api_request('version')
-        
+@is_admin()
+async def version_cmd(ctx, new_version=None):
+    """Check/update version"""
+    if new_version:
+        result = api_call('update-version', {'version': new_version})
         if 'error' in result:
-            error_embed = create_embed(
-                "❌ Version Kontrol Hatası",
-                f"**Hata:** {result['error']}",
-                0xff0000
-            )
-            msg = await ctx.send(embed=error_embed)
+            e = embed("❌ Update Failed", result['error'], 0xff0000)
         else:
-            version_embed = create_embed(
-                "📋 Güncel Version",
-                f"**🔢 Mevcut Version:** `{result.get('version', 'Unknown')}`\n**🔍 Talep Eden:** {ctx.author.mention}",
-                0x00ff00
-            )
-            version_embed.add_field(
-                name="ℹ️ Bilgi", 
-                value="Version güncellemek için: `!version <yeni_version>`", 
-                inline=False
-            )
-            msg = await ctx.send(embed=version_embed)
+            e = embed("✅ Version Updated", f"New: `{new_version}`")
     else:
-        # Update version
-        loading_embed = create_embed(
-            "🔄 Version Güncelleniyor...",
-            f"**📝 Yeni Version:** `{new_version}`",
-            0xffff00
-        )
-        msg = await ctx.send(embed=loading_embed)
-        
-        result = make_api_request('update-version', {'version': new_version})
-        
+        result = api_call('version')
         if 'error' in result:
-            error_embed = create_embed(
-                "❌ Version Güncelleme Hatası",
-                f"**Hata:** {result['error']}",
-                0xff0000
-            )
-            await msg.edit(embed=error_embed)
+            e = embed("❌ Version Error", result['error'], 0xff0000)
         else:
-            success_embed = create_embed(
-                "✅ Version Güncellendi",
-                f"**📝 Eski Version:** `{result.get('old_version', 'Unknown')}`\n**🆕 Yeni Version:** `{result.get('new_version', new_version)}`\n**👮 İşlemi Yapan:** {ctx.author.mention}",
-                0x00ff00
-            )
-            success_embed.add_field(
-                name="ℹ️ Bilgi", 
-                value="Kullanıcılar bir sonraki girişte otomatik güncellenecek!", 
-                inline=False
-            )
-            await msg.edit(embed=success_embed)
-            logger.info(f"📋 Version updated by {ctx.author}: {result.get('old_version')} -> {new_version}")
+            e = embed("📋 Version", f"Current: `{result.get('version', 'Unknown')}`")
     
-    asyncio.create_task(auto_delete_message(msg))
+    msg = await ctx.send(embed=e)
+    await cleanup(ctx, msg)
 
 @bot.command(name='license')
-@has_admin_role()
+@is_admin()
 async def check_license(ctx, key=None):
-    """Check license status for a specific key"""
-    await safe_delete_user_message(ctx)
-    
+    """Check license"""
     if not key:
-        error_embed = create_embed(
-            "❌ Hatalı Kullanım",
-            "**Kullanım:** `!license <key>`\n**Örnek:** `!license ABC123DEF456`",
-            0xff0000
-        )
-        msg = await ctx.send(embed=error_embed)
-        asyncio.create_task(auto_delete_message(msg))
+        e = embed("❌ Usage", "`!license <key>`", 0xff0000)
+        msg = await ctx.send(embed=e)
+        await cleanup(ctx, msg)
         return
     
-    # Check license via API
-    result = make_api_request('check-license', {'key': key})
+    result = api_call('check-license', {'key': key})
     
     if 'error' in result:
-        error_embed = create_embed(
-            "❌ License Kontrol Hatası",
-            f"**Hata:** {result['error']}",
-            0xff0000
-        )
-        msg = await ctx.send(embed=error_embed)
+        e = embed("❌ License Error", result['error'], 0xff0000)
     else:
-        # Display license status
         status = result.get('status', 'unknown')
+        key_short = key[:8] + "..."
         
         if status == 'unused':
-            license_embed = create_embed(
-                "🔑 License Durumu: UNUSED",
-                f"**🔐 Key:** `{key[:8]}...`\n**📊 Durum:** Kullanılmamış\n**🔍 Kontrol Eden:** {ctx.author.mention}",
-                0xffaa00
-            )
-            license_embed.add_field(
-                name="ℹ️ Bilgi",
-                value="Bu key henüz aktive edilmemiş.",
-                inline=False
-            )
+            e = embed("🔑 UNUSED", f"Key: `{key_short}`", 0xffaa00)
         elif status == 'expired':
-            license_embed = create_embed(
-                "❌ License Durumu: EXPIRED",
-                f"**🔐 Key:** `{key[:8]}...`\n**📊 Durum:** Süresi Dolmuş\n**⏰ Bitiş:** `{result.get('license_expiry', 'N/A')}`\n**🔍 Kontrol Eden:** {ctx.author.mention}",
-                0xff0000
-            )
-            license_embed.add_field(
-                name="⚠️ Uyarı",
-                value="Bu lisans artık geçerli değil!",
-                inline=False
-            )
+            e = embed("❌ EXPIRED", f"Key: `{key_short}`", 0xff0000)
         elif status == 'active':
-            license_embed = create_embed(
-                "✅ License Durumu: ACTIVE",
-                f"**🔐 Key:** `{key[:8]}...`\n**👤 Kullanıcı:** `{result.get('username', 'N/A')}`\n**⏰ Bitiş:** `{result.get('license_expiry', 'N/A')}`\n**⏱️ Kalan Süre:** `{result.get('remaining_time', 'N/A')}`\n**🔍 Kontrol Eden:** {ctx.author.mention}",
-                0x00ff00
-            )
-            license_embed.add_field(
-                name="📊 Detaylar",
-                value=f"**İlk Kullanım:** {result.get('first_use', 'N/A')}",
-                inline=False
-            )
+            user = result.get('username', 'N/A')
+            expiry = result.get('license_expiry', 'N/A')
+            e = embed("✅ ACTIVE", f"Key: `{key_short}`\nUser: `{user}`\nExpiry: `{expiry}`")
         else:
-            license_embed = create_embed(
-                "❓ License Durumu: UNKNOWN",
-                f"**🔐 Key:** `{key[:8]}...`\n**📊 Durum:** Bilinmeyen\n**🔍 Kontrol Eden:** {ctx.author.mention}",
-                0x888888
-            )
-        
-        msg = await ctx.send(embed=license_embed)
+            e = embed("❓ UNKNOWN", f"Key: `{key_short}`", 0x888888)
     
-    asyncio.create_task(auto_delete_message(msg))
+    msg = await ctx.send(embed=e)
+    await cleanup(ctx, msg)
 
 @bot.command(name='help')
-async def show_help(ctx):
-    """Show available commands"""
-    await safe_delete_user_message(ctx)
+async def help_cmd(ctx):
+    """Help menu"""
+    help_text = """```
+!key              - Generate new key
+!ban <user> [ip]  - Ban user/ip
+!unban <user> [ip]- Remove ban
+!check <user> [ip]- Check ban status
+!license <key>    - Check license
+!stats            - System stats
+!version [ver]    - Check/update version
+```"""
     
-    help_embed = create_embed(
-        "🎯 MIDNIGHT KEYLOGIN BOT",
-        "**Komut Rehberi & Kullanım Kılavuzu**\n`< >` = zorunlu parametre • `[ ]` = opsiyonel parametre",
-        0x7289DA
-    )
+    e = embed("🎯 Commands", help_text, 0x7289DA)
+    e.add_field(name="Note", value="Admin role required • Auto-delete in 5s", inline=False)
     
-    # Command fields
-    help_embed.add_field(
-        name="🔑 Key Management",
-        value="`!genkey` - Yeni lisans anahtarı oluştur\n`!license <key>` - License durumu kontrol et\n`!version [ver]` - Version görüntüle/güncelle",
-        inline=True
-    )
-    
-    help_embed.add_field(
-        name="📊 System Info",
-        value="`!stats` - Detaylı sistem istatistikleri\n`!help` - Bu yardım menüsünü göster",
-        inline=True
-    )
-    
-    help_embed.add_field(
-        name="🚫 Ban System",
-        value="`!ban <kullanıcı> [ip]` - Kullanıcı ve IP banla\n`!unban <kullanıcı> [ip]` - Ban'ı kaldır\n`!checkban <kullanıcı>` - Ban durumunu kontrol et",
-        inline=True
-    )
-    
-    help_embed.add_field(name="\u200b", value="\u200b", inline=False)
-    
-    help_embed.add_field(
-        name="ℹ️ Bilgi",
-        value="• Tüm komutlar Admin rolü gerektirir\n• Mesajlar 6 saniye sonra otomatik silinir\n• Bot 7/24 aktif ve güvenli",
-        inline=False
-    )
-    
-    help_embed.set_footer(
-        text=f"🎮 MIDNIGHT PONYWKA | Tüm mesajlar 6 saniye sonra silinir | {ctx.author.display_name}",
-        icon_url=bot.user.avatar.url if bot.user.avatar else None
-    )
-    
-    msg = await ctx.send(embed=help_embed)
-    asyncio.create_task(auto_delete_message(msg))
+    msg = await ctx.send(embed=e)
+    await cleanup(ctx, msg)
 
 @bot.event
 async def on_command_error(ctx, error):
-    """Handle command errors"""
-    await safe_delete_user_message(ctx)
+    """Handle errors"""
+    try:
+        await ctx.message.delete()
+    except:
+        pass
     
     if isinstance(error, commands.CheckFailure):
-        error_embed = create_embed(
-            "🔒 Yetki Hatası",
-            f"**Bu komutu kullanmak için `{ADMIN_ROLE}` rolüne sahip olmanız gerekiyor!**\n\n**👤 Kullanıcı:** {ctx.author.mention}",
-            0xff0000
-        )
-        error_embed.add_field(
-            name="💡 Çözüm",
-            value="Sunucu yöneticisinden gerekli rolü talep edin.",
-            inline=False
-        )
-        msg = await ctx.send(embed=error_embed)
-        asyncio.create_task(auto_delete_message(msg))
-    
+        e = embed("🔒 Access Denied", f"Admin role required", 0xff0000)
     elif isinstance(error, commands.CommandNotFound):
-        error_embed = create_embed(
-            "❓ Bilinmeyen Komut",
-            f"**Girdiğiniz komut bulunamadı!**\n\n**👤 Kullanıcı:** {ctx.author.mention}",
-            0xffaa00
-        )
-        error_embed.add_field(
-            name="💡 Yardım",
-            value="`!help` komutunu kullanarak mevcut komutları görebilirsiniz.",
-            inline=False
-        )
-        msg = await ctx.send(embed=error_embed)
-        asyncio.create_task(auto_delete_message(msg))
-    
+        e = embed("❓ Unknown Command", "Use `!help` for commands", 0xffaa00)
     else:
-        error_embed = create_embed(
-            "⚠️ Sistem Hatası",
-            f"**Beklenmeyen bir hata oluştu!**\n\n**Hata:** `{str(error)}`\n**👤 Kullanıcı:** {ctx.author.mention}",
-            0xff0000
-        )
-        msg = await ctx.send(embed=error_embed)
-        asyncio.create_task(auto_delete_message(msg))
+        e = embed("⚠️ Error", str(error), 0xff0000)
         logger.error(f"Command error: {error}")
+    
+    msg = await ctx.send(embed=e)
+    asyncio.create_task(cleanup(ctx, msg, 3))
 
 if __name__ == "__main__":
-    logger.info("🚀 Starting Ultra Optimized Keylogin Management Bot...")
-    logger.info("📋 Configuration check:")
-    logger.info(f"   • TOKEN: {'✅ Set' if TOKEN else '❌ Missing'}")
-    logger.info(f"   • API_URL: {'✅ Set' if API_URL else '❌ Missing'}")
-    logger.info(f"   • API_TOKEN: {'✅ Set' if API_TOKEN else '❌ Missing'}")
-    logger.info("=" * 50)
-    
-    # Check required environment variables
-    missing_vars = []
-    if not TOKEN:
-        missing_vars.append("TOKEN")
-    if not API_URL:
-        missing_vars.append("API_URL")
-    if not API_TOKEN:
-        missing_vars.append("API_TOKEN")
-    
-    if missing_vars:
-        logger.error(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
-        logger.error("🔧 Please configure these in Railway Dashboard > Variables tab:")
-        logger.error(f"   TOKEN = your_discord_bot_token")
-        logger.error(f"   API_URL = https://midnightponywka.com/api_optimized.php")
-        logger.error(f"   API_TOKEN = MIDNIGHTPONYWKA_SUPER_SECRET_2024_XYZ")
-        logger.error(f"   ADMIN_ROLE = Admin")
+    # Check config
+    missing = [var for var, val in [("TOKEN", TOKEN), ("API_URL", API_URL), ("API_TOKEN", API_TOKEN)] if not val]
+    if missing:
+        logger.error(f"Missing: {', '.join(missing)}")
         exit(1)
     
-    try:
-        bot.run(TOKEN)
-    except Exception as e:
-        logger.error(f"❌ Failed to start bot: {e}") 
+    logger.info("Starting bot...")
+    bot.run(TOKEN) 
