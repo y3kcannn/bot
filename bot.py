@@ -1,120 +1,127 @@
 import discord
-from discord.ext import commands
-import requests
+import aiohttp
 import os
-import time
-import hmac
-import hashlib
-import uuid
+import asyncio
+from discord.ext import commands
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    print("ℹ️ python-dotenv yüklü değil, Railway ortamında çalıştığı varsayılıyor.")
+# Configuration
+DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+API_URL = os.getenv('API_URL', 'https://api-production-7da7.up.railway.app/api.php')
+API_TOKEN = os.getenv('TOKEN', 'MIDNIGHT_AUTH_SECRET_2024_ULTRA_SECURE_KEY_987654321')
 
-# Ortam değişkenlerinden gizli verileri al
-TOKEN = os.environ.get("DISCORD_TOKEN")
-API_URL = "https://midnightponywka.com/api.php"
-API_TOKEN = os.environ.get("API_TOKEN")
-HMAC_SECRET = os.environ.get("HMAC_SECRET")
-
-if not TOKEN:
-    print("❌ DISCORD_TOKEN bulunamadı. Railway'de 'Variables' kısmına eklediğinizden emin olun.")
-    exit(1)
-
+# Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents)
 
-# HMAC + nonce + timestamp üretici
-def generate_signature(action, owner_id, loader, key, hwid):
-    nonce = str(uuid.uuid4())
-    timestamp = str(int(time.time()))
-    data = f"{action}|{owner_id}|{loader}|{key}|{hwid}|{timestamp}|{nonce}"
-    signature = hmac.new(HMAC_SECRET.encode(), data.encode(), hashlib.sha256).hexdigest()
-    return {
-        "action": action,
-        "owner_id": owner_id,
-        "loader": loader,
-        "key": key,
-        "hwid": hwid,
-        "timestamp": timestamp,
-        "nonce": nonce,
-        "signature": signature
-    }
+# Session for HTTP requests
+session = None
 
 @bot.event
 async def on_ready():
-    print(f"[+] Bot aktif: {bot.user}")
+    global session
+    session = aiohttp.ClientSession()
+    print(f"🚀 {bot.user} BOT AKTİF!")
+    print(f"📡 API: {API_URL}")
 
-@bot.command()
-async def key(ctx, loader: str):
-    owner_id = str(ctx.author.id)
-    hwid = ""
-    key = "_"
-    payload = generate_signature("create", owner_id, loader, key, hwid)
-    try:
-        res = requests.post(API_URL + f"?token={API_TOKEN}", data=payload)
-        await ctx.send(f"🔑 Key oluşturuldu: `{res.text}`")
-    except Exception as e:
-        await ctx.send(f"❌ Hata: {e}")
+@bot.event
+async def on_disconnect():
+    if session:
+        await session.close()
 
-@bot.command()
-async def reset(ctx, loader: str, key: str):
-    owner_id = str(ctx.author.id)
-    hwid = "_"
-    payload = generate_signature("reset", owner_id, loader, key, hwid)
-    try:
-        res = requests.post(API_URL + f"?token={API_TOKEN}", data=payload)
-        await ctx.send(f"♻️ Key sıfırlandı: `{res.text}`")
-    except Exception as e:
-        await ctx.send(f"❌ Hata: {e}")
-
-@bot.command()
-async def ban(ctx, loader: str, hwid: str):
-    owner_id = str(ctx.author.id)
-    key = "_"
-    payload = generate_signature("ban", owner_id, loader, key, hwid)
-    try:
-        res = requests.post(API_URL + f"?token={API_TOKEN}", data=payload)
-        await ctx.send(f"🚫 Ban sonucu: `{res.text}`")
-    except Exception as e:
-        await ctx.send(f"❌ Hata: {e}")
-
-@bot.command()
-async def unban(ctx, loader: str, hwid: str):
-    owner_id = str(ctx.author.id)
-    key = "_"
-    payload = generate_signature("unban", owner_id, loader, key, hwid)
-    try:
-        res = requests.post(API_URL + f"?token={API_TOKEN}", data=payload)
-        await ctx.send(f"✅ Unban sonucu: `{res.text}`")
-    except Exception as e:
-        await ctx.send(f"❌ Hata: {e}")
-
-@bot.command()
-async def removekey(ctx, loader: str, key: str):
-    owner_id = str(ctx.author.id)
-    hwid = "_"
-    payload = generate_signature("removekey", owner_id, loader, key, hwid)
-    try:
-        res = requests.post(API_URL + f"?token={API_TOKEN}", data=payload)
-        await ctx.send(f"🗑️ Key silindi: `{res.text}`")
-    except Exception as e:
-        await ctx.send(f"❌ Hata: {e}")
-
-@bot.command()
+@bot.command(name='stats')
 async def stats(ctx):
-    owner_id = str(ctx.author.id)
-    loader = "_"
-    key = "_"
-    hwid = "_"
-    payload = generate_signature("stats", owner_id, loader, key, hwid)
+    """Bot ve API istatistiklerini gösterir"""
     try:
-        res = requests.post(API_URL + f"?token={API_TOKEN}", data=payload)
-        await ctx.send(f"📊 Stats: `{res.text}`")
+        await ctx.typing()
+        
+        # API'den stats al
+        async with session.post(f"{API_URL}?token={API_TOKEN}", 
+                               data={'action': 'stats'},
+                               headers={'User-Agent': 'DiscordBot'}) as response:
+            
+            if response.status == 200:
+                try:
+                    data = await response.json()
+                    
+                    embed = discord.Embed(
+                        title="📊 Midnight Auth İstatistikleri",
+                        color=0x00ff00
+                    )
+                    
+                    embed.add_field(name="🔑 Toplam Key", value=str(data.get('total_keys', 0)), inline=True)
+                    embed.add_field(name="✅ Kullanılan", value=str(data.get('used_keys', 0)), inline=True)
+                    embed.add_field(name="🟢 Aktif", value=str(data.get('active_keys', 0)), inline=True)
+                    embed.add_field(name="🚫 Banlanan", value=str(data.get('banned_users', 0)), inline=True)
+                    embed.add_field(name="⏰ Zaman", value=str(data.get('server_time', 'Bilinmiyor')), inline=True)
+                    
+                    embed.set_footer(text=f"Talep eden: {ctx.author.display_name}")
+                    await ctx.send(embed=embed)
+                    
+                except Exception as e:
+                    await ctx.send("❌ API'den gelen veri format hatası")
+            else:
+                text_response = await response.text()
+                await ctx.send(f"❌ API Hatası: {text_response}")
+                
     except Exception as e:
-        await ctx.send(f"❌ Hata: {e}")
+        await ctx.send(f"❌ Bağlantı hatası: {str(e)}")
 
-bot.run(TOKEN)
+@bot.command(name='ping')
+async def ping(ctx):
+    """Bot ping değerini gösterir"""
+    latency = round(bot.latency * 1000)
+    embed = discord.Embed(
+        title="🏓 Pong!",
+        description=f"Gecikme: {latency}ms",
+        color=0x00ff00
+    )
+    await ctx.send(embed=embed)
+
+@bot.command(name='test')
+async def test(ctx):
+    """API bağlantısını test eder"""
+    try:
+        await ctx.typing()
+        async with session.post(f"{API_URL}?token={API_TOKEN}", 
+                               data={'action': 'stats'},
+                               headers={'User-Agent': 'DiscordBot'}) as response:
+            
+            if response.status == 200:
+                await ctx.send("✅ API bağlantısı başarılı!")
+            else:
+                await ctx.send(f"❌ API test başarısız: {response.status}")
+    except Exception as e:
+        await ctx.send(f"❌ Test hatası: {str(e)}")
+
+@bot.command(name='help')
+async def help_command(ctx):
+    """Yardım menüsünü gösterir"""
+    embed = discord.Embed(
+        title="🤖 Midnight Auth Bot",
+        description="Kullanılabilir komutlar:",
+        color=0x3498db
+    )
+    
+    embed.add_field(name="!stats", value="API istatistiklerini gösterir", inline=False)
+    embed.add_field(name="!ping", value="Bot ping değerini gösterir", inline=False)
+    embed.add_field(name="!test", value="API bağlantısını test eder", inline=False)
+    embed.add_field(name="!help", value="Bu yardım menüsünü gösterir", inline=False)
+    
+    await ctx.send(embed=embed)
+
+# Error handler
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.send("❌ Böyle bir komut yok. `!help` yazarak komutları görün.")
+    else:
+        await ctx.send(f"❌ Hata: {str(error)}")
+
+if __name__ == "__main__":
+    if not DISCORD_TOKEN:
+        print("❌ DISCORD_TOKEN bulunamadı! Railway environment variables kontrol et.")
+        exit(1)
+    
+    print("🔄 Bot başlatılıyor...")
+    bot.run(DISCORD_TOKEN)
