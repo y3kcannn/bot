@@ -106,8 +106,13 @@ async def removekey(ctx, loader: str, key: str):
 
 @bot.command()
 async def stats(ctx):
+    owner_id = str(ctx.author.id)
+    loader = "_"
+    key = "_"
+    hwid = "_"
+    payload = generate_signature("stats", owner_id, loader, key, hwid)
     try:
-        res = requests.post(API_URL + f"?token={API_TOKEN}", data={"action": "stats"})
+        res = requests.post(API_URL + f"?token={API_TOKEN}", data=payload)
         await ctx.send(f"📊 Stats: `{res.text}`")
     except Exception as e:
         await ctx.send(f"❌ Hata: {e}")
