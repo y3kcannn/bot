@@ -42,14 +42,13 @@ bot = commands.Bot(
 class APIHandler:
     @staticmethod
     async def call(action: str, data: Optional[dict] = None) -> dict:
-        """Async API request with better error handling"""
         try:
             async with aiohttp.ClientSession() as session:
-                payload = {'action': action, 'token': API_TOKEN}
+                params = {'api': '1', 'action': action, 'token': API_TOKEN}
                 if data:
-                    payload.update(data)
+                    params.update(data)
                 
-                async with session.post(API_URL, json=payload) as response:
+                async with session.get(API_URL, params=params) as response:
                     return await response.json()
         except Exception as e:
             return {'error': f'API connection failed: {str(e)}'}
@@ -106,10 +105,7 @@ class EmbedBuilder:
             color=color,
             timestamp=datetime.now(timezone.utc)
         )
-        embed.set_footer(
-            text="Midnight Keylogin System • Advanced Management",
-            icon_url="https://cdn.discordapp.com/embed/avatars/0.png"
-        )
+        embed.set_footer(text="Midnight Keylogin System")
         return embed
     
     @staticmethod
@@ -182,7 +178,7 @@ async def on_command_error(ctx, error):
 @has_admin_role()
 async def prefix_generate_key(ctx):
     """!key - Generate new license key"""
-    result = await APIHandler.call('generate-key')
+    result = await APIHandler.call('add-key')
     
     if 'error' in result:
         embed = EmbedBuilder.error("Key Generation Failed", f"```{result['error']}```")
