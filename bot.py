@@ -6,16 +6,22 @@ import time
 import hmac
 import hashlib
 import uuid
-from dotenv import load_dotenv
 
-# Ortam değişkenlerini yükle
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("ℹ️ python-dotenv yüklü değil, Railway ortamında çalıştığı varsayılıyor.")
 
 # Ortam değişkenlerinden gizli verileri al
 TOKEN = os.environ.get("DISCORD_TOKEN")
 API_URL = "https://midnightponywka.com/api.php"
 API_TOKEN = os.environ.get("API_TOKEN")
 HMAC_SECRET = os.environ.get("HMAC_SECRET")
+
+if not TOKEN:
+    print("❌ DISCORD_TOKEN bulunamadı. Railway'de 'Variables' kısmına eklediğinizden emin olun.")
+    exit(1)
 
 intents = discord.Intents.default()
 intents.message_content = True
