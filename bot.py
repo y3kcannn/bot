@@ -105,12 +105,20 @@ async def stats(ctx):
         await ctx.send("❌ Bağlantı hatası")
 
 @bot.command(name='key')
-async def create_key(ctx, discord_user: str):
-    """Yeni key oluşturur ve DM ile gönderir (!key @discordismi)"""
+async def create_key(ctx, target_user: discord.Member):
+    """Yeni key oluşturur ve hedef kullanıcıya DM ile gönderir (!key @discordismi)"""
     try:
-        owner_id = str(ctx.author.id)
+        # Hedef kullanıcının Discord ID'si
+        target_discord_id = str(target_user.id)
         loader = "spoofer"  # Default loader
-        payload = generate_signature("create", owner_id, loader)
+        
+        # API'ye key oluşturma isteği gönder - hedef kullanıcının ID'si ile
+        payload = {
+            'action': 'create_key',
+            'target_discord_id': target_discord_id,
+            'loader': loader,
+            'created_by': str(ctx.author.id)
+        }
         
         async with session.post(f"{API_URL}?token={API_TOKEN}", 
                                data=payload,
@@ -121,24 +129,23 @@ async def create_key(ctx, discord_user: str):
             if "KEY_CREATED:" in result:
                 key = result.split(": ")[1]
                 
-                # Verify bilgileri oluştur
-                discord_id = str(ctx.author.id)
-                verify_code = f"VERIFY_{discord_id[-4:]}"
-                verify_url = f"https://midnightponywka.com/verify?discord_id={discord_id}&code={verify_code}"
+                # Verify bilgileri oluştur (hedef kullanıcı için)
+                verify_code = f"VERIFY_{target_discord_id[-4:]}"
+                verify_url = f"https://midnightponywka.com/verify.html?discord_id={target_discord_id}&code={verify_code}"
                 
-                # Key'i DM ile gönder
+                # Hedef kullanıcıya DM ile gönder
                 dm_embed = discord.Embed(
-                    title="🔑 Yeni Key Oluşturuldu",
+                    title="🔑 Size Özel Key Oluşturuldu",
                     color=0x00ff00
                 )
                 dm_embed.add_field(name="🔑 Key", value=f"```{key}```", inline=False)
                 dm_embed.add_field(name="📁 Loader", value=loader, inline=True)
                 dm_embed.add_field(name="⏰ Geçerlilik", value="7 gün", inline=True)
-                dm_embed.add_field(name="👤 Hedef", value=discord_user, inline=True)
+                dm_embed.add_field(name="👤 Oluşturan", value=f"{ctx.author.mention}", inline=True)
                 
                 # Verify bilgileri ekle
                 dm_embed.add_field(name="🔐 Verify Sayfası", value=f"[Buraya tıkla]({verify_url})", inline=False)
-                dm_embed.add_field(name="🆔 Discord ID", value=f"`{discord_id}`", inline=True)
+                dm_embed.add_field(name="🆔 Discord ID", value=f"`{target_discord_id}`", inline=True)
                 dm_embed.add_field(name="🔢 Verify Kodu", value=f"`{verify_code}`", inline=True)
                 
                 dm_embed.set_footer(text="Key'i güvende tutun ve verify sayfasında kullanın!")
@@ -146,7 +153,7 @@ async def create_key(ctx, discord_user: str):
                 # Kanal için onay mesajı
                 public_embed = discord.Embed(
                     title="✅ Key Oluşturuldu",
-                    description=f"**{discord_user}** için `{loader}` key'i oluşturuldu ve DM ile gönderildi.",
+                    description=f"**{target_user.mention}** için `{loader}` key'i oluşturuldu ve DM ile gönderildi.",
                     color=0x00ff00
                 )
                 public_embed.add_field(name="📁 Loader", value=loader, inline=True)
@@ -154,15 +161,15 @@ async def create_key(ctx, discord_user: str):
                 public_embed.add_field(name="🔐 Verify", value="DM'de link var", inline=True)
                 
                 try:
-                    # Önce DM'e gönder
-                    await ctx.author.send(embed=dm_embed)
+                    # Önce hedef kullanıcıya DM'e gönder
+                    await target_user.send(embed=dm_embed)
                     # Sonra kanala onay mesajı
                     await ctx.send(embed=public_embed)
                 except discord.Forbidden:
                     # DM gönderilemezse kanala gönder ama uyarı ver
                     warning_embed = discord.Embed(
                         title="⚠️ DM Gönderilemedi",
-                        description="Key oluşturuldu ama DM'iniz kapalı. Key'iniz aşağıda:",
+                        description=f"Key oluşturuldu ama {target_user.mention} DM'i kapalı. Key'i aşağıda:",
                         color=0xffaa00
                     )
                     warning_embed.add_field(name="🔑 Key", value=f"```{key}```", inline=False)
