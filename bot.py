@@ -35,8 +35,16 @@ async def stats(ctx):
     try:
         await ctx.typing()
         
-        # API'den stats al
-        async with session.post(f"{API_URL}?token={API_TOKEN}", 
+        # Debug: Token kontrolü
+        if not API_TOKEN:
+            await ctx.send("❌ TOKEN environment variable bulunamadı!")
+            return
+            
+        # API'den stats al  
+        url = f"{API_URL}?token={API_TOKEN}"
+        await ctx.send(f"🔍 **Debug:** Token var: `{API_TOKEN[:8]}...`")
+        
+        async with session.post(url, 
                                data={'action': 'stats'},
                                headers={'User-Agent': 'DiscordBot'}) as response:
             
