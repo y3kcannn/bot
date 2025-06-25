@@ -7,10 +7,11 @@ import hmac
 import hashlib
 import uuid
 
-TOKEN = os.environ.get("DISCORD_TOKEN")
+# Sabit tanımlar (geçici olarak gömülü)
+TOKEN = "YOUR_DISCORD_BOT_TOKEN"
 API_URL = "https://midnightponywka.com/api.php"
-API_TOKEN = os.environ.get("API_TOKEN")
-HMAC_SECRET = os.environ.get("HMAC_SECRET")
+API_TOKEN = "MIDNIGHT_API_SECRET_2024"
+HMAC_SECRET = "MIDNIGHT_HMAC_SECRET_KEY"
 
 intents = discord.Intents.default()
 intents.message_content = True
