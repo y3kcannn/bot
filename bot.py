@@ -6,8 +6,8 @@ from discord.ext import commands
 
 # Configuration
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
-API_URL = os.getenv('API_URL', 'https://api-production-7da7.up.railway.app/api.php')
-API_TOKEN = os.getenv('TOKEN', 'MIDNIGHT_AUTH_SECRET_2024_ULTRA_SECURE_KEY_987654321')
+API_URL = os.getenv('API_URL')
+API_TOKEN = os.getenv('TOKEN')
 
 # Bot setup
 intents = discord.Intents.default()
