@@ -123,5 +123,14 @@ if __name__ == "__main__":
         print("❌ DISCORD_TOKEN bulunamadı! Railway environment variables kontrol et.")
         exit(1)
     
+    if not API_URL:
+        print("❌ API_URL bulunamadı! Railway environment variables kontrol et.")
+        exit(1)
+        
+    if not API_TOKEN:
+        print("❌ TOKEN bulunamadı! Railway environment variables kontrol et.")
+        exit(1)
+    
     print("🔄 Bot başlatılıyor...")
+    print(f"📡 API bağlantısı test ediliyor...")
     bot.run(DISCORD_TOKEN)
