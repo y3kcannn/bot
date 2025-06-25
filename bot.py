@@ -47,7 +47,7 @@ def is_admin():
 def embed(title, desc=None, color=0x00ff00):
     """Clean embed"""
     e = discord.Embed(title=title, description=desc, color=color, timestamp=datetime.now(timezone.utc))
-    e.set_footer(text="Keylogin System")
+    e.set_footer(text="Midnight Keylogin System", icon_url="https://cdn.discordapp.com/emojis/🔐.png")
     return e
 
 async def cleanup(ctx, msg=None, delay=5):
@@ -72,9 +72,12 @@ async def gen_key(ctx):
     result = api_call('generate-key')
     
     if 'error' in result:
-        e = embed("❌ Error", result['error'], 0xff0000)
+        e = embed("❌ Key Generation Error", f"```{result['error']}```", 0xff0000)
     else:
-        e = embed("✅ Key Generated", f"**Key:** `{result.get('key', 'N/A')}`")
+        key = result.get('key', 'N/A')
+        e = embed("✅ Key Generated Successfully", None, 0x00ff00)
+        e.add_field(name="🔑 New License Key", value=f"`{key}`", inline=False)
+        e.add_field(name="📌 Important", value="Save this key securely!", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -84,7 +87,9 @@ async def gen_key(ctx):
 async def ban_user(ctx, username=None, ip=None):
     """Ban user/ip"""
     if not username and not ip:
-        e = embed("❌ Usage", "`!ban <username> [ip]`", 0xff0000)
+        e = embed("❌ Invalid Usage", None, 0xff0000)
+        e.add_field(name="📋 Usage", value="`!ban <username> [ip]`", inline=False)
+        e.add_field(name="📝 Example", value="`!ban TestUser 192.168.1.1`", inline=False)
         msg = await ctx.send(embed=e)
         await cleanup(ctx, msg)
         return
@@ -96,9 +101,12 @@ async def ban_user(ctx, username=None, ip=None):
     result = api_call('ban-user', data)
     
     if 'error' in result:
-        e = embed("❌ Ban Failed", result['error'], 0xff0000)
+        e = embed("❌ Ban Failed", f"```{result['error']}```", 0xff0000)
     else:
-        e = embed("🚫 Banned", f"User: `{username or 'N/A'}`\nIP: `{ip or 'N/A'}`")
+        e = embed("🚫 User Banned Successfully", None, 0xff6600)
+        e.add_field(name="👤 Username", value=f"`{username or 'Not specified'}`", inline=True)
+        e.add_field(name="🌐 IP Address", value=f"`{ip or 'Not specified'}`", inline=True)
+        e.add_field(name="⚠️ Status", value="Access blocked from system", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -108,7 +116,9 @@ async def ban_user(ctx, username=None, ip=None):
 async def unban_user(ctx, username=None, ip=None):
     """Remove ban"""
     if not username and not ip:
-        e = embed("❌ Usage", "`!unban <username> [ip]`", 0xff0000)
+        e = embed("❌ Invalid Usage", None, 0xff0000)
+        e.add_field(name="📋 Usage", value="`!unban <username> [ip]`", inline=False)
+        e.add_field(name="📝 Example", value="`!unban TestUser`", inline=False)
         msg = await ctx.send(embed=e)
         await cleanup(ctx, msg)
         return
@@ -120,9 +130,12 @@ async def unban_user(ctx, username=None, ip=None):
     result = api_call('unban-user', data)
     
     if 'error' in result:
-        e = embed("❌ Unban Failed", result['error'], 0xff0000)
+        e = embed("❌ Unban Failed", f"```{result['error']}```", 0xff0000)
     else:
-        e = embed("✅ Unbanned", f"User: `{username or 'N/A'}`\nIP: `{ip or 'N/A'}`")
+        e = embed("✅ Ban Removed Successfully", None, 0x00ff00)
+        e.add_field(name="👤 Username", value=f"`{username or 'Not specified'}`", inline=True)
+        e.add_field(name="🌐 IP Address", value=f"`{ip or 'Not specified'}`", inline=True)
+        e.add_field(name="✅ Status", value="Access restored to system", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -132,7 +145,9 @@ async def unban_user(ctx, username=None, ip=None):
 async def check_ban(ctx, username=None, ip=None):
     """Check ban status"""
     if not username and not ip:
-        e = embed("❌ Usage", "`!check <username> [ip]`", 0xff0000)
+        e = embed("❌ Invalid Usage", None, 0xff0000)
+        e.add_field(name="📋 Usage", value="`!check <username> [ip]`", inline=False)
+        e.add_field(name="📝 Example", value="`!check TestUser`", inline=False)
         msg = await ctx.send(embed=e)
         await cleanup(ctx, msg)
         return
@@ -144,11 +159,17 @@ async def check_ban(ctx, username=None, ip=None):
     result = api_call('check-ban', data)
     
     if 'error' in result:
-        e = embed("❌ Check Failed", result['error'], 0xff0000)
+        e = embed("❌ Check Failed", f"```{result['error']}```", 0xff0000)
     elif result.get('banned'):
-        e = embed("🚫 BANNED", f"User: `{username or 'N/A'}`\nIP: `{ip or 'N/A'}`", 0xff0000)
+        e = embed("🚫 USER IS BANNED", None, 0xff0000)
+        e.add_field(name="👤 Username", value=f"`{username or 'Not specified'}`", inline=True)
+        e.add_field(name="🌐 IP Address", value=f"`{ip or 'Not specified'}`", inline=True)
+        e.add_field(name="📊 Status", value="🔴 **BLOCKED** - Access denied", inline=False)
     else:
-        e = embed("✅ CLEAN", f"User: `{username or 'N/A'}`\nIP: `{ip or 'N/A'}`")
+        e = embed("✅ USER IS CLEAN", None, 0x00ff00)
+        e.add_field(name="👤 Username", value=f"`{username or 'Not specified'}`", inline=True)
+        e.add_field(name="🌐 IP Address", value=f"`{ip or 'Not specified'}`", inline=True)
+        e.add_field(name="📊 Status", value="🟢 **CLEAN** - Access allowed", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -160,18 +181,19 @@ async def show_stats(ctx):
     result = api_call('stats')
     
     if 'error' in result:
-        e = embed("❌ Stats Error", result['error'], 0xff0000)
+        e = embed("❌ Stats Error", f"```{result['error']}```", 0xff0000)
     else:
         total = int(result.get('total_keys', 0))
         used = int(result.get('used_keys', 0))
+        available = total - used
         banned_users = int(result.get('banned_users', 0))
         banned_ips = int(result.get('banned_ips', 0))
+        usage_percent = (used/max(1,total)*100)
         
-        stats_text = f"""```
-Keys: {used}/{total} ({(used/max(1,total)*100):.1f}%)
-Bans: {banned_users + banned_ips} total
-```"""
-        e = embed("📊 Stats", stats_text, 0x0099ff)
+        e = embed("📊 System Statistics", None, 0x0099ff)
+        e.add_field(name="🔑 License Keys", value=f"```Total: {total}\nUsed: {used}\nAvailable: {available}\nUsage: {usage_percent:.1f}%```", inline=True)
+        e.add_field(name="🚫 Security Bans", value=f"```Users: {banned_users}\nIPs: {banned_ips}\nTotal: {banned_users + banned_ips}```", inline=True)
+        e.add_field(name="📈 System Health", value=f"```Status: {'🟢 Healthy' if usage_percent < 80 else '🟡 Busy' if usage_percent < 95 else '🔴 Critical'}\nSecurity: {'🛡️ Active' if banned_users + banned_ips > 0 else '⚪ Normal'}```", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -183,15 +205,20 @@ async def version_cmd(ctx, new_version=None):
     if new_version:
         result = api_call('update-version', {'version': new_version})
         if 'error' in result:
-            e = embed("❌ Update Failed", result['error'], 0xff0000)
+            e = embed("❌ Version Update Failed", f"```{result['error']}```", 0xff0000)
         else:
-            e = embed("✅ Version Updated", f"New: `{new_version}`")
+            e = embed("✅ Version Updated Successfully", None, 0x00ff00)
+            e.add_field(name="📝 New Version", value=f"`{new_version}`", inline=False)
+            e.add_field(name="ℹ️ Note", value="Users will auto-update on next login", inline=False)
     else:
         result = api_call('version')
         if 'error' in result:
-            e = embed("❌ Version Error", result['error'], 0xff0000)
+            e = embed("❌ Version Check Error", f"```{result['error']}```", 0xff0000)
         else:
-            e = embed("📋 Version", f"Current: `{result.get('version', 'Unknown')}`")
+            current_version = result.get('version', 'Unknown')
+            e = embed("📋 Current Version", None, 0x7289da)
+            e.add_field(name="🔢 Version", value=f"`{current_version}`", inline=False)
+            e.add_field(name="💡 Tip", value="Use `!version <new_version>` to update", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -201,7 +228,9 @@ async def version_cmd(ctx, new_version=None):
 async def check_license(ctx, key=None):
     """Check license"""
     if not key:
-        e = embed("❌ Usage", "`!license <key>`", 0xff0000)
+        e = embed("❌ Invalid Usage", None, 0xff0000)
+        e.add_field(name="📋 Usage", value="`!license <key>`", inline=False)
+        e.add_field(name="📝 Example", value="`!license ABC123DEF456`", inline=False)
         msg = await ctx.send(embed=e)
         await cleanup(ctx, msg)
         return
@@ -209,21 +238,32 @@ async def check_license(ctx, key=None):
     result = api_call('check-license', {'key': key})
     
     if 'error' in result:
-        e = embed("❌ License Error", result['error'], 0xff0000)
+        e = embed("❌ License Check Error", f"```{result['error']}```", 0xff0000)
     else:
         status = result.get('status', 'unknown')
-        key_short = key[:8] + "..."
+        key_short = key[:8] + "..." if len(key) > 8 else key
         
         if status == 'unused':
-            e = embed("🔑 UNUSED", f"Key: `{key_short}`", 0xffaa00)
+            e = embed("🔑 LICENSE: UNUSED", None, 0xffaa00)
+            e.add_field(name="🔐 Key", value=f"`{key_short}`", inline=False)
+            e.add_field(name="📊 Status", value="🟡 **UNUSED** - Ready for activation", inline=False)
         elif status == 'expired':
-            e = embed("❌ EXPIRED", f"Key: `{key_short}`", 0xff0000)
+            e = embed("❌ LICENSE: EXPIRED", None, 0xff0000)
+            e.add_field(name="🔐 Key", value=f"`{key_short}`", inline=True)
+            e.add_field(name="⏰ Expired", value=f"`{result.get('license_expiry', 'N/A')}`", inline=True)
+            e.add_field(name="📊 Status", value="🔴 **EXPIRED** - No longer valid", inline=False)
         elif status == 'active':
             user = result.get('username', 'N/A')
             expiry = result.get('license_expiry', 'N/A')
-            e = embed("✅ ACTIVE", f"Key: `{key_short}`\nUser: `{user}`\nExpiry: `{expiry}`")
+            e = embed("✅ LICENSE: ACTIVE", None, 0x00ff00)
+            e.add_field(name="🔐 Key", value=f"`{key_short}`", inline=True)
+            e.add_field(name="👤 User", value=f"`{user}`", inline=True)
+            e.add_field(name="⏰ Expires", value=f"`{expiry}`", inline=True)
+            e.add_field(name="📊 Status", value="🟢 **ACTIVE** - Currently in use", inline=False)
         else:
-            e = embed("❓ UNKNOWN", f"Key: `{key_short}`", 0x888888)
+            e = embed("❓ LICENSE: UNKNOWN", None, 0x888888)
+            e.add_field(name="🔐 Key", value=f"`{key_short}`", inline=False)
+            e.add_field(name="📊 Status", value="⚪ **UNKNOWN** - Unable to determine", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -231,18 +271,35 @@ async def check_license(ctx, key=None):
 @bot.command(name='help')
 async def help_cmd(ctx):
     """Help menu"""
-    help_text = """```
-!key              - Generate new key
-!ban <user> [ip]  - Ban user/ip
-!unban <user> [ip]- Remove ban
-!check <user> [ip]- Check ban status
-!license <key>    - Check license
-!stats            - System stats
-!version [ver]    - Check/update version
-```"""
+    e = embed("🎯 Midnight Keylogin Commands", None, 0x7289DA)
     
-    e = embed("🎯 Commands", help_text, 0x7289DA)
-    e.add_field(name="Note", value="Admin role required • Auto-delete in 5s", inline=False)
+    # Key Management Commands
+    e.add_field(
+        name="🔑 Key Management", 
+        value="**`!key`**\n└ Generate new license key\n\n**`!license <key>`**\n└ Check license status\n\n**`!version [new_version]`**\n└ Check or update system version", 
+        inline=False
+    )
+    
+    # Security Commands
+    e.add_field(
+        name="🛡️ Security Management", 
+        value="**`!ban <username> [ip]`**\n└ Ban user from system\n\n**`!unban <username> [ip]`**\n└ Remove user ban\n\n**`!check <username> [ip]`**\n└ Check ban status", 
+        inline=False
+    )
+    
+    # System Commands
+    e.add_field(
+        name="📊 System Information", 
+        value="**`!stats`**\n└ View system statistics\n\n**`!help`**\n└ Show this command menu", 
+        inline=False
+    )
+    
+    # Footer info
+    e.add_field(
+        name="📌 Important Notes", 
+        value="• All commands require **Admin** role\n• Messages auto-delete after **5 seconds**\n• Use `< >` for required parameters, `[ ]` for optional", 
+        inline=False
+    )
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
