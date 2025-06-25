@@ -40,9 +40,14 @@ async def stats(ctx):
                                data={'action': 'stats'},
                                headers={'User-Agent': 'DiscordBot'}) as response:
             
+            # Her durumda önce text olarak al
+            text_response = await response.text()
+            
             if response.status == 200:
                 try:
-                    data = await response.json()
+                    # JSON parse etmeye çalış
+                    import json
+                    data = json.loads(text_response)
                     
                     embed = discord.Embed(
                         title="📊 Midnight Auth İstatistikleri",
@@ -59,10 +64,10 @@ async def stats(ctx):
                     await ctx.send(embed=embed)
                     
                 except Exception as e:
-                    await ctx.send("❌ API'den gelen veri format hatası")
+                    # Debug için gerçek yanıtı göster
+                    await ctx.send(f"❌ JSON Parse Hatası!\n**API Yanıtı:** `{text_response[:1000]}`\n**Hata:** {str(e)}")
             else:
-                text_response = await response.text()
-                await ctx.send(f"❌ API Hatası: {text_response}")
+                await ctx.send(f"❌ API HTTP Hatası {response.status}: `{text_response[:500]}`")
                 
     except Exception as e:
         await ctx.send(f"❌ Bağlantı hatası: {str(e)}")
