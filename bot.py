@@ -70,9 +70,18 @@ class APIHandler:
             return {"error": "🔌 Connection failed - Server may be down"}
         except json.JSONDecodeError:
             return {"error": "📄 Invalid server response"}
-    except Exception as e:
+        except Exception as e:
             logger.error(f"API Error: {e}")
             return {"error": f"🚫 Request failed: {str(e)}"}
+
+# Auto-delete function
+async def auto_delete_interaction(interaction: discord.Interaction, delay: int = 60):
+    """Auto-delete interaction response after specified delay"""
+    await asyncio.sleep(delay)
+    try:
+        await interaction.delete_original_response()
+    except:
+        pass
 
 # Advanced Permission System
 def has_admin_permissions():
@@ -132,7 +141,7 @@ class EmbedBuilder:
 class ConfirmView(discord.ui.View):
     """Confirmation dialog with buttons"""
     def __init__(self, user_id: int):
-        super().__init__(timeout=30)
+        super().__init__(timeout=60)
         self.user_id = user_id
         self.result = None
     
@@ -155,7 +164,7 @@ class ConfirmView(discord.ui.View):
 class PaginatedView(discord.ui.View):
     """Paginated embed view"""
     def __init__(self, embeds: List[discord.Embed], user_id: int):
-        super().__init__(timeout=120)
+        super().__init__(timeout=60)
         self.embeds = embeds
         self.user_id = user_id
         self.current_page = 0
@@ -255,6 +264,8 @@ class KeyManagement(app_commands.Group):
         if view.result is None:
             embed = EmbedBuilder.error("Timeout", "Key generation cancelled due to timeout.")
             await interaction.edit_original_response(embed=embed, view=None)
+            # Auto-delete after 1 minute
+            await asyncio.create_task(auto_delete_interaction(interaction, 60))
         return
     
         if not view.result:
@@ -278,6 +289,9 @@ class KeyManagement(app_commands.Group):
             embed.add_field(name="📅 Created", value=f"<t:{int(datetime.now().timestamp())}:F>", inline=False)
         
         await interaction.edit_original_response(embed=embed)
+        
+        # Auto-delete after 1 minute
+        asyncio.create_task(auto_delete_interaction(interaction, 60))
     
     @app_commands.command(name="check", description="📋 Check license key status")
     @app_commands.describe(key="The license key to check")
@@ -396,6 +410,9 @@ class SecurityManagement(app_commands.Group):
                 embed.add_field(name="📝 Reason", value=f"`{reason}`", inline=False)
         
         await interaction.edit_original_response(embed=embed)
+        
+        # Auto-delete after 1 minute
+        asyncio.create_task(auto_delete_interaction(interaction, 60))
     
     @app_commands.command(name="unban", description="✅ Remove ban from user")
     @app_commands.describe(
@@ -432,6 +449,9 @@ class SecurityManagement(app_commands.Group):
             embed.add_field(name="✅ Status", value="🟢 **RESTORED** - Access granted to system", inline=False)
         
         await interaction.followup.send(embed=embed)
+        
+        # Auto-delete after 1 minute
+        asyncio.create_task(auto_delete_interaction(interaction, 60))
     
     @app_commands.command(name="check", description="🔍 Check ban status")
     @app_commands.describe(
@@ -473,6 +493,9 @@ class SecurityManagement(app_commands.Group):
             embed.add_field(name="📊 Status", value="🟢 **CLEAN** - Access allowed", inline=False)
         
         await interaction.followup.send(embed=embed)
+        
+        # Auto-delete after 1 minute
+        asyncio.create_task(auto_delete_interaction(interaction, 60))
 
 # System Commands
 @bot.tree.command(name="stats", description="📊 View detailed system statistics")
@@ -605,6 +628,9 @@ async def version_management(interaction: discord.Interaction, new_version: Opti
             embed.add_field(name="ℹ️ Note", value="Users will automatically update on next login", inline=False)
         
         await interaction.edit_original_response(embed=embed)
+        
+        # Auto-delete after 1 minute
+        asyncio.create_task(auto_delete_interaction(interaction, 60))
     else:
         # Check current version
         await interaction.response.defer(ephemeral=True)
@@ -621,6 +647,9 @@ async def version_management(interaction: discord.Interaction, new_version: Opti
             embed.add_field(name="💡 Update", value="Use `/version new_version:[version]` to update", inline=False)
         
         await interaction.followup.send(embed=embed)
+        
+        # Auto-delete after 1 minute
+        asyncio.create_task(auto_delete_interaction(interaction, 60))
 
 @bot.tree.command(name="help", description="📚 View all available commands and features")
 async def help_command(interaction: discord.Interaction):
@@ -651,7 +680,7 @@ async def help_command(interaction: discord.Interaction):
     )
     main_embed.add_field(
         name="📌 Important Information",
-        value=f"• **Required Role:** `{ADMIN_ROLE}` or Administrator\n• **Command Prefix:** `/` (Slash commands)\n• **Response Time:** Messages auto-delete after 5 seconds\n• **Support:** Contact your server administrator",
+        value=f"• **Required Role:** `{ADMIN_ROLE}` or Administrator\n• **Command Prefix:** `/` (Slash commands)\n• **Help Menu:** Permanent (does not auto-delete)\n• **Other Commands:** Auto-delete after 1 minute\n• **Support:** Contact your server administrator",
             inline=False
         )
     embeds.append(main_embed)
@@ -679,9 +708,10 @@ async def help_command(interaction: discord.Interaction):
     if len(embeds) > 1:
         view = PaginatedView(embeds, interaction.user.id)
         embed = embeds[0]
-        embed.set_footer(text=f"Midnight Keylogin System • Page 1/{len(embeds)} • Use buttons to navigate")
+        embed.set_footer(text=f"Midnight Keylogin System • Page 1/{len(embeds)} • Permanent help menu")
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     else:
+        embeds[0].set_footer(text="Midnight Keylogin System • Permanent help menu • Does not auto-delete")
         await interaction.response.send_message(embed=embeds[0], ephemeral=True)
 
 # Register command groups
@@ -697,10 +727,11 @@ async def legacy_help(ctx):
         "This bot now uses **Slash Commands**!\n\nType `/` to see all available commands.\n\nSlash commands provide a better, more interactive experience."
     )
     embed.add_field(name="💡 Quick Start", value="Try typing `/help` for the full command list!", inline=False)
+    embed.set_footer(text="Midnight Keylogin System • Use /help for permanent help menu")
     msg = await ctx.send(embed=embed)
     
-    # Auto-delete after 10 seconds
-    await asyncio.sleep(10)
+    # This message will auto-delete, but /help won't
+    await asyncio.sleep(60)
     try:
         await msg.delete()
         await ctx.message.delete()
