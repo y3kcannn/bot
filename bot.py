@@ -12,7 +12,7 @@ API_TOKEN = os.getenv('TOKEN', 'MIDNIGHT_AUTH_SECRET_2024_ULTRA_SECURE_KEY_98765
 # Bot setup
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
 # Session for HTTP requests
 session = None
