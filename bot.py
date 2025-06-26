@@ -277,8 +277,7 @@ async def key_list(ctx):
                     break
                 status = "🟢" if data.get('used') else "🟡"
                 user = data.get('username', 'Kullanılmamış')
-                key_short = key[:8] + "..."
-                key_text += f"`{key_short}` {status} {user}\n"
+                key_text += f"`{key}` {status} {user}\n"
                 count += 1
             
             if len(keys) > 10:
