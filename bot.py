@@ -275,8 +275,6 @@ async def key_list(ctx):
         e.add_field(name="📊 Toplam Anahtar", value=f"`{total}`", inline=True)
         e.add_field(name="🟢 Kullanılan", value=f"`{used}`", inline=True)
         e.add_field(name="🟡 Boşta", value=f"`{available}`", inline=True)
-        usage_percent = (used/max(1,total)*100)
-        e.add_field(name="📈 Kullanım Oranı", value=f"`%{usage_percent:.1f}`", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
