@@ -294,13 +294,6 @@ async def help_cmd(ctx):
         inline=False
     )
     
-    # Footer info
-    e.add_field(
-        name="💡 Notlar", 
-        value="• Tüm komutlar **Admin** rolü gerektirir\n• Mesajlar 1 dakika sonra silinir\n• `< >` zorunlu, `[ ]` isteğe bağlı", 
-        inline=False
-    )
-    
     msg = await ctx.send(embed=e)
     # Help mesajı silinmesin, sadece kullanıcının mesajını sil
     try:
