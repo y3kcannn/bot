@@ -50,7 +50,7 @@ def embed(title, desc=None, color=0x00ff00):
     e.set_footer(text="Midnight Keylogin System", icon_url="https://cdn.discordapp.com/emojis/🔐.png")
     return e
 
-async def cleanup(ctx, msg=None, delay=5):
+async def cleanup(ctx, msg=None, delay=60):
     """Auto cleanup"""
     try:
         await ctx.message.delete()
@@ -271,38 +271,42 @@ async def check_license(ctx, key=None):
 @bot.command(name='help')
 async def help_cmd(ctx):
     """Help menu"""
-    e = embed("🎯 Midnight Keylogin Commands", None, 0x7289DA)
+    e = embed("📋 Komutlar", None, 0x7289DA)
     
     # Key Management Commands
     e.add_field(
-        name="🔑 Key Management", 
-        value="**`!key`**\n└ Generate new license key\n\n**`!license <key>`**\n└ Check license status\n\n**`!version [new_version]`**\n└ Check or update system version", 
+        name="🔑 Lisans İşlemleri", 
+        value="`!key` - Yeni lisans oluştur\n`!license <anahtar>` - Lisans durumunu kontrol et\n`!version` - Sistem versiyonunu göster", 
         inline=False
     )
     
     # Security Commands
     e.add_field(
-        name="🛡️ Security Management", 
-        value="**`!ban <username> [ip]`**\n└ Ban user from system\n\n**`!unban <username> [ip]`**\n└ Remove user ban\n\n**`!check <username> [ip]`**\n└ Check ban status", 
+        name="🛡️ Güvenlik İşlemleri", 
+        value="`!ban <kullanıcı>` - Kullanıcıyı yasakla\n`!unban <kullanıcı>` - Yasağı kaldır\n`!check <kullanıcı>` - Yasak durumunu kontrol et", 
         inline=False
     )
     
     # System Commands
     e.add_field(
-        name="📊 System Information", 
-        value="**`!stats`**\n└ View system statistics\n\n**`!help`**\n└ Show this command menu", 
+        name="📊 Sistem Bilgileri", 
+        value="`!stats` - İstatistikleri göster\n`!help` - Bu menüyü göster", 
         inline=False
     )
     
     # Footer info
     e.add_field(
-        name="📌 Important Notes", 
-        value="• All commands require **Admin** role\n• Messages auto-delete after **5 seconds**\n• Use `< >` for required parameters, `[ ]` for optional", 
+        name="💡 Notlar", 
+        value="• Tüm komutlar **Admin** rolü gerektirir\n• Mesajlar 1 dakika sonra silinir\n• `< >` zorunlu, `[ ]` isteğe bağlı", 
         inline=False
     )
     
     msg = await ctx.send(embed=e)
-    await cleanup(ctx, msg)
+    # Help mesajı silinmesin, sadece kullanıcının mesajını sil
+    try:
+        await ctx.message.delete()
+    except:
+        pass
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -321,7 +325,7 @@ async def on_command_error(ctx, error):
         logger.error(f"Command error: {error}")
     
     msg = await ctx.send(embed=e)
-    asyncio.create_task(cleanup(ctx, msg, 3))
+    asyncio.create_task(cleanup(ctx, msg, 60))
 
 if __name__ == "__main__":
     # Check config
