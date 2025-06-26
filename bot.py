@@ -92,8 +92,11 @@ async def download_loader(ctx):
                 filename='MidnightLoader.exe'
             )
             
-            # Minimal embed
-            success_embed = embed("📁 MidnightLoader.exe", f"`{file_size/1024:.0f} KB`", 0x00ff00)
+            # Minimal ama bilgilendirici embed
+            success_embed = embed("📁 Loader Hazır", None, 0x00ff00)
+            success_embed.add_field(name="📦 Dosya", value="`MidnightLoader.exe`", inline=True)
+            success_embed.add_field(name="📊 Boyut", value=f"`{file_size/1024:.0f} KB`", inline=True)
+            success_embed.add_field(name="✅ Durum", value="Güncel", inline=True)
             
             # Dosyayı gönder
             msg = await ctx.send(embed=success_embed, file=file)
@@ -456,7 +459,7 @@ async def help_cmd(ctx):
     )
     
     msg = await ctx.send(embed=e)
-    # Help mesajı silinmesin, sadece kullanıcının mesajını sil
+    # Help mesajı kalıcı - sadece kullanıcının mesajını sil
     try:
         await ctx.message.delete()
     except:
@@ -479,7 +482,7 @@ async def on_command_error(ctx, error):
         logger.error(f"Command error: {error}")
     
     msg = await ctx.send(embed=e)
-    asyncio.create_task(cleanup(ctx, msg, 60))
+    asyncio.create_task(cleanup(ctx, msg, 20))
 
 if __name__ == "__main__":
     # Check config
