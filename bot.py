@@ -93,9 +93,20 @@ async def ban_user(ctx, username=None, ip=None):
         await cleanup(ctx, msg)
         return
     
+    # Eğer sadece kullanıcı adı verilmişse, IP'sini bulmaya çalış
+    user_ip = ip
+    if username and not ip:
+        # Kullanıcının IP'sini bulmak için key listesini kontrol et
+        keys_result = api_call('list-keys')
+        if 'keys' in keys_result:
+            for key, data in keys_result['keys'].items():
+                if data.get('username') == username and data.get('ip'):
+                    user_ip = data.get('ip')
+                    break
+    
     data = {}
     if username: data['username'] = username
-    if ip: data['ip'] = ip
+    if user_ip: data['ip'] = user_ip
     
     result = api_call('ban-user', data)
     
@@ -104,7 +115,11 @@ async def ban_user(ctx, username=None, ip=None):
     else:
         e = embed("🚫 User Banned Successfully", None, 0xff6600)
         e.add_field(name="👤 Username", value=f"`{username or 'Not specified'}`", inline=True)
-        e.add_field(name="🌐 IP Address", value=f"`{ip or 'Not specified'}`", inline=True)
+        e.add_field(name="🌐 IP Address", value=f"`{user_ip or 'Not found'}`", inline=True)
+        
+        # Eğer IP bulunduysa bilgi ver
+        if username and user_ip and not ip:
+            e.add_field(name="ℹ️ Info", value=f"{username} kişisi {ctx.author.display_name} tarafından banlandı", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
