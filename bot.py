@@ -99,10 +99,19 @@ async def ban_user(ctx, username=None, ip=None):
         # Kullanıcının IP'sini bulmak için key listesini kontrol et
         keys_result = api_call('list-keys')
         if 'keys' in keys_result:
-            for key, data in keys_result['keys'].items():
-                if data.get('username') == username and data.get('ip'):
-                    user_ip = data.get('ip')
-                    break
+            keys_data = keys_result['keys']
+            # Eğer keys bir dictionary ise
+            if isinstance(keys_data, dict):
+                for key, data in keys_data.items():
+                    if data.get('username') == username and data.get('ip'):
+                        user_ip = data.get('ip')
+                        break
+            # Eğer keys bir liste ise (bazı API'lerde böyle olabilir)
+            elif isinstance(keys_data, list):
+                for key_info in keys_data:
+                    if key_info.get('username') == username and key_info.get('ip'):
+                        user_ip = key_info.get('ip')
+                        break
     
     data = {}
     if username: data['username'] = username
@@ -289,13 +298,26 @@ async def key_list(ctx):
         else:
             key_text = ""
             count = 0
-            for key, data in keys.items():
-                if count >= 10:  # İlk 10 anahtarı göster
-                    break
-                status = "🟢" if data.get('used') else "🟡"
-                user = data.get('username', 'Kullanılmamış')
-                key_text += f"`{key}` {status} {user}\n"
-                count += 1
+            
+            # Eğer keys bir dictionary ise
+            if isinstance(keys, dict):
+                for key, data in keys.items():
+                    if count >= 10:  # İlk 10 anahtarı göster
+                        break
+                    status = "🟢" if data.get('used') else "🟡"
+                    user = data.get('username', 'Kullanılmamış')
+                    key_text += f"`{key}` {status} {user}\n"
+                    count += 1
+            # Eğer keys bir liste ise
+            elif isinstance(keys, list):
+                for key_info in keys:
+                    if count >= 10:  # İlk 10 anahtarı göster
+                        break
+                    status = "🟢" if key_info.get('used') else "🟡"
+                    user = key_info.get('username', 'Kullanılmamış')
+                    key = key_info.get('key', 'N/A')
+                    key_text += f"`{key}` {status} {user}\n"
+                    count += 1
             
             if len(keys) > 10:
                 key_text += f"\n... ve {len(keys)-10} anahtar daha"
