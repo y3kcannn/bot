@@ -261,27 +261,22 @@ async def check_license(ctx, key=None):
 @is_admin()
 async def key_list(ctx):
     """Key list"""
-    result = api_call('get-keys')
+    # Stats'tan key bilgilerini al
+    result = api_call('stats')
     
     if 'error' in result:
         e = embed("❌ Keylist Error", f"```{result['error']}```", 0xff0000)
     else:
-        keys = result.get('keys', [])
-        if not keys:
-            e = embed("📋 Key List", "Hiç anahtar bulunamadı", 0xffaa00)
-        else:
-            key_text = ""
-            for i, key_info in enumerate(keys[:10], 1):  # İlk 10 anahtarı göster
-                key = key_info.get('key', 'N/A')
-                status = key_info.get('status', 'unknown')
-                status_emoji = "🟢" if status == 'active' else "🟡" if status == 'unused' else "🔴"
-                key_text += f"{i}. `{key}` {status_emoji}\n"
-            
-            if len(keys) > 10:
-                key_text += f"\n... ve {len(keys)-10} anahtar daha"
-            
-            e = embed("📋 Key List", key_text, 0x0099ff)
-            e.add_field(name="📊 Toplam", value=f"{len(keys)} anahtar", inline=True)
+        total = int(result.get('total_keys', 0))
+        used = int(result.get('used_keys', 0))
+        available = total - used
+        
+        e = embed("📋 Key Özeti", None, 0x0099ff)
+        e.add_field(name="📊 Toplam Anahtar", value=f"`{total}`", inline=True)
+        e.add_field(name="🟢 Kullanılan", value=f"`{used}`", inline=True)
+        e.add_field(name="🟡 Boşta", value=f"`{available}`", inline=True)
+        usage_percent = (used/max(1,total)*100)
+        e.add_field(name="📈 Kullanım Oranı", value=f"`%{usage_percent:.1f}`", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -290,37 +285,23 @@ async def key_list(ctx):
 @is_admin()
 async def ban_list(ctx):
     """Ban list"""
-    result = api_call('get-bans')
+    # Stats'tan ban bilgilerini al
+    result = api_call('stats')
     
     if 'error' in result:
         e = embed("❌ Banlist Error", f"```{result['error']}```", 0xff0000)
     else:
-        banned_users = result.get('banned_users', [])
-        banned_ips = result.get('banned_ips', [])
+        banned_users = int(result.get('banned_users', 0))
+        banned_ips = int(result.get('banned_ips', 0))
+        total_bans = banned_users + banned_ips
         
-        if not banned_users and not banned_ips:
-            e = embed("📋 Ban List", "Hiç yasaklı kullanıcı yok", 0x00ff00)
+        if total_bans == 0:
+            e = embed("✅ Ban List", "Hiç yasaklı kullanıcı yok", 0x00ff00)
         else:
-            ban_text = ""
-            
-            if banned_users:
-                ban_text += "**👤 Kullanıcılar:**\n"
-                for i, user in enumerate(banned_users[:5], 1):
-                    ban_text += f"{i}. `{user}`\n"
-                if len(banned_users) > 5:
-                    ban_text += f"... ve {len(banned_users)-5} kullanıcı daha\n"
-            
-            if banned_ips:
-                ban_text += "\n**🌐 IP Adresleri:**\n"
-                for i, ip in enumerate(banned_ips[:5], 1):
-                    ban_text += f"{i}. `{ip}`\n"
-                if len(banned_ips) > 5:
-                    ban_text += f"... ve {len(banned_ips)-5} IP daha"
-            
-            e = embed("🚫 Ban List", ban_text, 0xff6600)
-            e.add_field(name="👤 Kullanıcı", value=f"{len(banned_users)}", inline=True)
-            e.add_field(name="🌐 IP", value=f"{len(banned_ips)}", inline=True)
-            e.add_field(name="📊 Toplam", value=f"{len(banned_users) + len(banned_ips)}", inline=True)
+            e = embed("🚫 Ban Özeti", None, 0xff6600)
+            e.add_field(name="👤 Yasaklı Kullanıcı", value=f"`{banned_users}`", inline=True)
+            e.add_field(name="🌐 Yasaklı IP", value=f"`{banned_ips}`", inline=True)
+            e.add_field(name="📊 Toplam", value=f"`{total_bans}`", inline=True)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
