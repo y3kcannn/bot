@@ -201,9 +201,11 @@ async def version_cmd(ctx, new_version=None):
         result = api_call('update-version', {'version': new_version})
         if 'error' in result:
             e = embed("❌ Version Update Failed", f"```{result['error']}```", 0xff0000)
-        else:
+        elif result.get('success'):
             e = embed("✅ Version Updated Successfully", None, 0x00ff00)
             e.add_field(name="📝 New Version", value=f"`{new_version}`", inline=False)
+        else:
+            e = embed("❌ Version Update Failed", "Unknown error", 0xff0000)
     else:
         result = api_call('version')
         if 'error' in result:
