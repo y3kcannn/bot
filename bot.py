@@ -52,7 +52,7 @@ def embed(title, desc=None, color=0x00ff00):
     e.set_footer(text="Midnight Keylogin System", icon_url="https://cdn.discordapp.com/emojis/🔐.png")
     return e
 
-async def cleanup(ctx, msg=None, delay=60):
+async def cleanup(ctx, msg=None, delay=20):
     """Auto cleanup"""
     try:
         await ctx.message.delete()
@@ -73,10 +73,6 @@ async def on_ready():
 async def download_loader(ctx):
     """Download latest loader"""
     try:
-        # İndirme başlangıç mesajı
-        downloading_embed = embed("📥 Loader İndiriliyor", "Güncel loader sürümü hazırlanıyor...", 0xffaa00)
-        status_msg = await ctx.send(embed=downloading_embed)
-        
         # PNG dosyasını indir
         logger.info(f"Loader download requested by {ctx.author}")
         response = requests.get(LOADER_URL, timeout=30)
@@ -85,9 +81,9 @@ async def download_loader(ctx):
             # Dosya boyutunu kontrol et (Discord 25MB limit)
             file_size = len(response.content)
             if file_size > 25 * 1024 * 1024:  # 25MB
-                await status_msg.edit(embed=embed("❌ Dosya Çok Büyük", 
-                    f"Dosya boyutu: {file_size / (1024*1024):.1f}MB\nDiscord limiti: 25MB", 0xff0000))
-                await cleanup(ctx, status_msg)
+                error_embed = embed("❌ Dosya Çok Büyük", f"Dosya boyutu: {file_size / (1024*1024):.1f}MB", 0xff0000)
+                msg = await ctx.send(embed=error_embed)
+                await cleanup(ctx, msg)
                 return
             
             # Discord dosya objesi oluştur
@@ -96,48 +92,38 @@ async def download_loader(ctx):
                 filename='MidnightLoader.exe'
             )
             
-            # Başarı embed'i oluştur
-            success_embed = embed("🚀 Loader Hazır!", "Güncel loader sürümü başarıyla indirildi.", 0x00ff00)
-            success_embed.add_field(name="📁 Dosya Adı", value="`MidnightLoader.exe`", inline=True)
-            success_embed.add_field(name="📊 Boyut", value=f"`{file_size:,} bytes ({file_size/1024:.1f} KB)`", inline=True)
-            success_embed.add_field(name="🔐 Güvenlik", value="✅ Orijinal dosya", inline=True)
-            success_embed.add_field(name="⚠️ Uyarı", value="Windows Defender uyarısı gösterebilir (normal)", inline=False)
-            success_embed.add_field(name="🛡️ Kullanım", value="1. İndir\n2. Windows Defender'dan izin ver\n3. Çalıştır", inline=False)
+            # Minimal embed
+            success_embed = embed("📁 MidnightLoader.exe", f"`{file_size/1024:.0f} KB`", 0x00ff00)
             
-            # Status mesajını sil ve yeni dosyayı gönder
-            await status_msg.delete()
+            # Dosyayı gönder
             msg = await ctx.send(embed=success_embed, file=file)
             
-            # Otomatik temizlik (5 dakika sonra)
-            await cleanup(ctx, msg, 300)
+            # Otomatik temizlik (20 saniye sonra)
+            await cleanup(ctx, msg, 20)
             logger.info(f"Loader successfully sent to {ctx.author}")
             
         else:
-            error_embed = embed("❌ İndirme Hatası", 
-                f"HTTP {response.status_code}: Dosya sunucudan alınamadı", 0xff0000)
-            await status_msg.edit(embed=error_embed)
-            await cleanup(ctx, status_msg)
+            error_embed = embed("❌ İndirme Hatası", f"HTTP {response.status_code}", 0xff0000)
+            msg = await ctx.send(embed=error_embed)
+            await cleanup(ctx, msg)
             logger.error(f"Loader download failed: HTTP {response.status_code}")
             
     except requests.exceptions.Timeout:
-        error_embed = embed("⏱️ Zaman Aşımı", "Sunucu yanıt vermiyor, lütfen tekrar deneyin", 0xff0000)
-        await status_msg.edit(embed=error_embed)
-        await cleanup(ctx, status_msg)
+        error_embed = embed("⏱️ Zaman Aşımı", "Sunucu yanıt vermiyor", 0xff0000)
+        msg = await ctx.send(embed=error_embed)
+        await cleanup(ctx, msg)
         logger.error("Loader download timeout")
         
     except requests.exceptions.ConnectionError:
         error_embed = embed("🌐 Bağlantı Hatası", "Sunucuya ulaşılamıyor", 0xff0000)
-        await status_msg.edit(embed=error_embed)
-        await cleanup(ctx, status_msg)
+        msg = await ctx.send(embed=error_embed)
+        await cleanup(ctx, msg)
         logger.error("Loader download connection error")
         
     except Exception as e:
-        error_embed = embed("❌ Beklenmeyen Hata", f"```{str(e)}```", 0xff0000)
-        try:
-            await status_msg.edit(embed=error_embed)
-        except:
-            await ctx.send(embed=error_embed)
-        await cleanup(ctx, status_msg)
+        error_embed = embed("❌ Hata", f"{str(e)}", 0xff0000)
+        msg = await ctx.send(embed=error_embed)
+        await cleanup(ctx, msg)
         logger.error(f"Loader download error: {e}")
 
 @bot.command(name='key')
