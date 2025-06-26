@@ -239,12 +239,10 @@ async def check_license(ctx, key=None):
         if status == 'unused':
             e = embed("🔑 LICENSE: UNUSED", None, 0xffaa00)
             e.add_field(name="🔐 Key", value=f"`{key_short}`", inline=False)
-            e.add_field(name="📊 Status", value="🟡 **UNUSED** - Ready for activation", inline=False)
         elif status == 'expired':
             e = embed("❌ LICENSE: EXPIRED", None, 0xff0000)
             e.add_field(name="🔐 Key", value=f"`{key_short}`", inline=True)
             e.add_field(name="⏰ Expired", value=f"`{result.get('license_expiry', 'N/A')}`", inline=True)
-            e.add_field(name="📊 Status", value="🔴 **EXPIRED** - No longer valid", inline=False)
         elif status == 'active':
             user = result.get('username', 'N/A')
             expiry = result.get('license_expiry', 'N/A')
@@ -252,11 +250,77 @@ async def check_license(ctx, key=None):
             e.add_field(name="🔐 Key", value=f"`{key_short}`", inline=True)
             e.add_field(name="👤 User", value=f"`{user}`", inline=True)
             e.add_field(name="⏰ Expires", value=f"`{expiry}`", inline=True)
-            e.add_field(name="📊 Status", value="🟢 **ACTIVE** - Currently in use", inline=False)
         else:
             e = embed("❓ LICENSE: UNKNOWN", None, 0x888888)
             e.add_field(name="🔐 Key", value=f"`{key_short}`", inline=False)
-            e.add_field(name="📊 Status", value="⚪ **UNKNOWN** - Unable to determine", inline=False)
+    
+    msg = await ctx.send(embed=e)
+    await cleanup(ctx, msg)
+
+@bot.command(name='keylist')
+@is_admin()
+async def key_list(ctx):
+    """Key list"""
+    result = api_call('get-keys')
+    
+    if 'error' in result:
+        e = embed("❌ Keylist Error", f"```{result['error']}```", 0xff0000)
+    else:
+        keys = result.get('keys', [])
+        if not keys:
+            e = embed("📋 Key List", "Hiç anahtar bulunamadı", 0xffaa00)
+        else:
+            key_text = ""
+            for i, key_info in enumerate(keys[:10], 1):  # İlk 10 anahtarı göster
+                key = key_info.get('key', 'N/A')
+                status = key_info.get('status', 'unknown')
+                status_emoji = "🟢" if status == 'active' else "🟡" if status == 'unused' else "🔴"
+                key_text += f"{i}. `{key}` {status_emoji}\n"
+            
+            if len(keys) > 10:
+                key_text += f"\n... ve {len(keys)-10} anahtar daha"
+            
+            e = embed("📋 Key List", key_text, 0x0099ff)
+            e.add_field(name="📊 Toplam", value=f"{len(keys)} anahtar", inline=True)
+    
+    msg = await ctx.send(embed=e)
+    await cleanup(ctx, msg)
+
+@bot.command(name='banlist')
+@is_admin()
+async def ban_list(ctx):
+    """Ban list"""
+    result = api_call('get-bans')
+    
+    if 'error' in result:
+        e = embed("❌ Banlist Error", f"```{result['error']}```", 0xff0000)
+    else:
+        banned_users = result.get('banned_users', [])
+        banned_ips = result.get('banned_ips', [])
+        
+        if not banned_users and not banned_ips:
+            e = embed("📋 Ban List", "Hiç yasaklı kullanıcı yok", 0x00ff00)
+        else:
+            ban_text = ""
+            
+            if banned_users:
+                ban_text += "**👤 Kullanıcılar:**\n"
+                for i, user in enumerate(banned_users[:5], 1):
+                    ban_text += f"{i}. `{user}`\n"
+                if len(banned_users) > 5:
+                    ban_text += f"... ve {len(banned_users)-5} kullanıcı daha\n"
+            
+            if banned_ips:
+                ban_text += "\n**🌐 IP Adresleri:**\n"
+                for i, ip in enumerate(banned_ips[:5], 1):
+                    ban_text += f"{i}. `{ip}`\n"
+                if len(banned_ips) > 5:
+                    ban_text += f"... ve {len(banned_ips)-5} IP daha"
+            
+            e = embed("🚫 Ban List", ban_text, 0xff6600)
+            e.add_field(name="👤 Kullanıcı", value=f"{len(banned_users)}", inline=True)
+            e.add_field(name="🌐 IP", value=f"{len(banned_ips)}", inline=True)
+            e.add_field(name="📊 Toplam", value=f"{len(banned_users) + len(banned_ips)}", inline=True)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -269,14 +333,14 @@ async def help_cmd(ctx):
     # Key Management Commands
     e.add_field(
         name="🔑 Lisans İşlemleri", 
-        value="`!key` - Yeni lisans oluştur\n`!license <anahtar>` - Lisans durumunu kontrol et\n`!version` - Sistem versiyonunu göster", 
+        value="`!key` - Yeni lisans oluştur\n`!keylist` - Tüm anahtarları listele\n`!license <anahtar>` - Lisans durumunu kontrol et\n`!version` - Sistem versiyonunu göster", 
         inline=False
     )
     
     # Security Commands
     e.add_field(
         name="🛡️ Güvenlik İşlemleri", 
-        value="`!ban <kullanıcı>` - Kullanıcıyı yasakla\n`!unban <kullanıcı>` - Yasağı kaldır\n`!check <kullanıcı>` - Yasak durumunu kontrol et", 
+        value="`!ban <kullanıcı>` - Kullanıcıyı yasakla\n`!unban <kullanıcı>` - Yasağı kaldır\n`!banlist` - Yasaklı kullanıcıları listele\n`!check <kullanıcı>` - Yasak durumunu kontrol et", 
         inline=False
     )
     
