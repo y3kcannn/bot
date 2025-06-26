@@ -77,7 +77,6 @@ async def gen_key(ctx):
         key = result.get('key', 'N/A')
         e = embed("✅ Key Generated Successfully", None, 0x00ff00)
         e.add_field(name="🔑 New License Key", value=f"`{key}`", inline=False)
-        e.add_field(name="📌 Important", value="Save this key securely!", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -106,7 +105,6 @@ async def ban_user(ctx, username=None, ip=None):
         e = embed("🚫 User Banned Successfully", None, 0xff6600)
         e.add_field(name="👤 Username", value=f"`{username or 'Not specified'}`", inline=True)
         e.add_field(name="🌐 IP Address", value=f"`{ip or 'Not specified'}`", inline=True)
-        e.add_field(name="⚠️ Status", value="Access blocked from system", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -135,7 +133,6 @@ async def unban_user(ctx, username=None, ip=None):
         e = embed("✅ Ban Removed Successfully", None, 0x00ff00)
         e.add_field(name="👤 Username", value=f"`{username or 'Not specified'}`", inline=True)
         e.add_field(name="🌐 IP Address", value=f"`{ip or 'Not specified'}`", inline=True)
-        e.add_field(name="✅ Status", value="Access restored to system", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -164,12 +161,10 @@ async def check_ban(ctx, username=None, ip=None):
         e = embed("🚫 USER IS BANNED", None, 0xff0000)
         e.add_field(name="👤 Username", value=f"`{username or 'Not specified'}`", inline=True)
         e.add_field(name="🌐 IP Address", value=f"`{ip or 'Not specified'}`", inline=True)
-        e.add_field(name="📊 Status", value="🔴 **BLOCKED** - Access denied", inline=False)
     else:
         e = embed("✅ USER IS CLEAN", None, 0x00ff00)
         e.add_field(name="👤 Username", value=f"`{username or 'Not specified'}`", inline=True)
         e.add_field(name="🌐 IP Address", value=f"`{ip or 'Not specified'}`", inline=True)
-        e.add_field(name="📊 Status", value="🟢 **CLEAN** - Access allowed", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
@@ -209,7 +204,6 @@ async def version_cmd(ctx, new_version=None):
         else:
             e = embed("✅ Version Updated Successfully", None, 0x00ff00)
             e.add_field(name="📝 New Version", value=f"`{new_version}`", inline=False)
-            e.add_field(name="ℹ️ Note", value="Users will auto-update on next login", inline=False)
     else:
         result = api_call('version')
         if 'error' in result:
@@ -218,7 +212,6 @@ async def version_cmd(ctx, new_version=None):
             current_version = result.get('version', 'Unknown')
             e = embed("📋 Current Version", None, 0x7289da)
             e.add_field(name="🔢 Version", value=f"`{current_version}`", inline=False)
-            e.add_field(name="💡 Tip", value="Use `!version <new_version>` to update", inline=False)
     
     msg = await ctx.send(embed=e)
     await cleanup(ctx, msg)
